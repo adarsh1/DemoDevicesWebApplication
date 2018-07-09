@@ -22,28 +22,51 @@
    });
         });
 
+        $("#uninitButton").mousedown(uninitialize);
+
+        function uninitialize() {
+             $.ajax({
+                type: "POST",
+                url: '@Url.Action("Uninitialize", "Thermostat")',
+                success: reset,
+       error: function(xhr, ajaxOptions, thrownError) {
+           alert(xhr.status);
+           alert(thrownError);
+       }
+   });
+        }
+
         function reset() {
-            roundedTemp = 19;
-            temperature = 19.0;
-            colorPalette = "inferno";
-            colorMap = colorMaps[colorPalette];
+            colorPalette = "";
+            colorRefresh();
             temperatureRefresh();
             targetRefresh();
-            colorRefresh();
             statusRefresh();
             alertRefresh();
         }
-   var roundedTemp = 19;
-   var temperature = 19.0;
-   var targetRefreshInterval = 300;
+
+        var roundedTemp = 19;
+        var temperature = 19.0;
+        var targetRefreshInterval = 300;
         var temperatureRefreshInterval = 150;
         var statusRefreshInterval = 200;
         var colorRefreshInterval = 500;
         var alertRefreshInterval = 400;
    var max = 34;
         var min = 2;
-        var colorPalette = "inferno";
-        var colorMap = colorMaps[colorPalette];
+        uninitialize();
+
+        window.addEventListener("beforeunload", function (event) {
+            $.ajax({
+                type: "POST",
+                url: '@Url.Action("Uninitialize", "Thermostat")',
+                async: false,
+       error: function(xhr, ajaxOptions, thrownError) {
+           alert(xhr.status);
+           alert(thrownError);
+       }
+   });
+        });
 
    function getIntermediate(aTemp, col1, col2) {
        var fac = (aTemp - col1.index) / (col2.index - col1.index);
@@ -154,7 +177,7 @@
                 colorMap = colorMaps[palette];
             }
             else {
-                alert("Unknown color Palette " + palette)
+                colorMap = colorMaps["none"];
             }
         }
 
@@ -180,7 +203,6 @@
        if (roundedTemp > min) {
            roundedTemp--;
            updateGr();
-           updateTargetTemperature();
            if (roundedTemp > 17) {
                $(".fill1").css("transform", "rotate(" + (roundedTemp - 18) * 10 + "deg)").css("transition-delay", "0s");
            } else if (roundedTemp == 17) {
@@ -195,7 +217,6 @@
        if (roundedTemp < max) {
            roundedTemp++;
            updateGr();
-           updateTargetTemperature();
            if (roundedTemp > 19) {
                $(".fill1").css("transform", "rotate(" + (roundedTemp - 18) * 10 + "deg)").css("transition-delay", "0s");
            } else if (roundedTemp == 19) {
@@ -229,6 +250,7 @@
    });
     </script>
 }
+
 <div class="container-fluid">
     <div class="row">
         <div class="col-xs-6">
@@ -236,6 +258,9 @@
                 <input type="text" id="connectionString" class="form-control" placeholder="Device connection String" aria-label="Device connection String" aria-describedby="basic-addon2">
                 <span class="input-group-btn">
                     <button id="initButton" class="btn btn-default" type="button">Initialize</button>
+                </span>
+                <span class="input-group-btn">
+                    <button id="uninitButton" class="btn btn-default" type="button">Un-Initialize</button>
                 </span>
             </div>
         </div>

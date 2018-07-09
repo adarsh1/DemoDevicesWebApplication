@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace SimulatedDevices
 {
-    public class Thermostat:IDisposable
+    public class Thermostat
     {
         const string targetTempProperty = "targetTempProperty";
         const string colorPaletteProperty = "colorPalette";
@@ -185,10 +185,14 @@ namespace SimulatedDevices
             }
         }
 
-        public void Dispose()
+        public async Task Dispose()
         {
             cancelationTokenSource.Cancel();
-            client?.Dispose();
+            if (client != null)
+            {
+                await client.CloseAsync();
+                client?.Dispose();
+            }
         }
     }
 }
