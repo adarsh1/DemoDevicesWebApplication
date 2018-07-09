@@ -1,0 +1,277 @@
+﻿@{
+    ViewBag.Title = "Thermostat";
+}
+@section css {
+    @Styles.Render("~/Content/Thermostat/css")
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons"
+          rel="stylesheet">
+}
+@section scripts {
+    @Scripts.Render("~/bundles/colorMaps")
+    <script>
+        $("#initButton").mousedown(function () {
+            $.ajax({
+                type: "POST",
+                data: { "connectionString":$("#connectionString").val() },
+                url: '@Url.Action("Initialize", "Thermostat")',
+                success: reset,
+       error: function(xhr, ajaxOptions, thrownError) {
+           alert(xhr.status);
+           alert(thrownError);
+       }
+   });
+        });
+
+        function reset() {
+            roundedTemp = 19;
+            temperature = 19.0;
+            colorPalette = "inferno";
+            colorMap = colorMaps[colorPalette];
+            temperatureRefresh();
+            targetRefresh();
+            colorRefresh();
+            statusRefresh();
+            alertRefresh();
+        }
+   var roundedTemp = 19;
+   var temperature = 19.0;
+   var targetRefreshInterval = 300;
+        var temperatureRefreshInterval = 150;
+        var statusRefreshInterval = 200;
+        var colorRefreshInterval = 500;
+        var alertRefreshInterval = 400;
+   var max = 34;
+        var min = 2;
+        var colorPalette = "inferno";
+        var colorMap = colorMaps[colorPalette];
+
+   function getIntermediate(aTemp, col1, col2) {
+       var fac = (aTemp - col1.index) / (col2.index - col1.index);
+       var r = (col2.rgb[0] - col1.rgb[0]) * fac + col1.rgb[0];
+       var g = (col2.rgb[1] - col1.rgb[1]) * fac + col1.rgb[1];
+       var b = (col2.rgb[2] - col1.rgb[2]) * fac + col1.rgb[2];
+       return [r, g, b];
+   }
+   function getColorForTemp(temp) {
+
+       var adjustedTemp = (temp - min) * 1.0 / (max - min);
+
+   for (let i = 0; i < colorMap.length-1; i++) {
+       if (colorMap[i+1].index > adjustedTemp) {
+           return getIntermediate(adjustedTemp, colorMap[i], colorMap[i + 1]);
+       }
+   }
+   return colorMap[colorMap.length - 1].rgb;
+   }
+
+   function updateGr() {
+   $(".heat").text("" + roundedTemp);
+   $(".ext").text("" + roundedTemp);
+   $(".number").css("transform", "translate(-50%, -50%) rotate(" + (-180 + roundedTemp * 10) + "deg)");
+   $(".shadow").css("transform", "translate(-50%, -50%) rotate(" + (-180 + roundedTemp * 10) + "deg)");
+   $(".fill").css("animation", "none");
+   $(".shadow").css("animation", "none");
+   }
+
+   function temperatureRefresh() {
+   $.ajax({
+       type: "Get",
+       url: '@Url.Action("Temperature", "Thermostat")',
+       success: updateTemperatureBackground,
+       error: function (xhr, ajaxOptions, thrownError) {
+           setTimeout(temperatureRefresh, temperatureRefreshInterval);
+           alert(xhr.status);
+           alert(thrownError);
+       }
+       });
+        }
+
+        function colorRefresh() {
+   $.ajax({
+       type: "Get",
+       url: '@Url.Action("ColorPalette", "Thermostat")',
+       success: updateColorBackground,
+       error: function (xhr, ajaxOptions, thrownError) {
+           setTimeout(colorRefresh, colorRefreshInterval);
+           alert(xhr.status);
+           alert(thrownError);
+       }
+       });
+        }
+
+        function alertRefresh() {
+        $.ajax({
+       type: "Get",
+       url: '@Url.Action("Message", "Thermostat")',
+            success: handleMessage,
+       error: function (xhr, alertRefresh, thrownError) {
+           setTimeout(alertRefresh, alertRefreshInterval);
+           alert(xhr.status);
+           alert(thrownError);
+       }
+       });
+        }
+
+        function handleMessage(message) {
+            setTimeout(alertRefresh, alertRefreshInterval);
+            if (!message)
+                return;
+            $(".alertContainer").append("<div class=\"alert alert-info fade in\"><a href=\"#\" class=\"close\" data-dismiss=\"alert\">&times;</a><strong>Note! </strong>" + message +"</div>")
+        }
+
+        function statusRefresh() {
+   $.ajax({
+       type: "Get",
+       url: '@Url.Action("Status", "Thermostat")',
+       success: updateStatus,
+       error: function (xhr, ajaxOptions, thrownError) {
+           setTimeout(statusRefresh, statusRefreshInterval);
+           alert(xhr.status);
+           alert(thrownError);
+       }
+       });
+   }
+
+   function targetRefresh() {
+   $.ajax({
+       type: "Get",
+       url: '@Url.Action("TargetTemperature", "Thermostat")',
+       success: updateTargetTemperature,
+       error: function (xhr, ajaxOptions, thrownError) {
+           setTimeout(targetRefresh, targetRefreshInterval);
+           alert(xhr.status);
+           alert(thrownError);
+       }
+       });
+   }
+        function updateStatus(status) {
+            setTimeout(statusRefresh, statusRefreshInterval);
+            $("#status").html(status);
+        }
+        function updateColorBackground(palette) {
+            setTimeout(colorRefresh, colorRefreshInterval);
+            if (colorMaps[palette]) {
+                colorMap = colorMaps[palette];
+            }
+            else {
+                alert("Unknown color Palette " + palette)
+            }
+        }
+
+   function updateTemperatureBackground(temp) {
+       setTimeout(temperatureRefresh, temperatureRefreshInterval);
+           temperature = temp;
+           var rgb = getColorForTemp(temperature);
+           $("html").css("background-color", "rgb(" + rgb[0] + "," + rgb[1] + "," + rgb[2] + ")");
+   }
+
+   function updateTargetTemperature(target) {
+       setTimeout(targetRefresh, targetRefreshInterval);
+       if (roundedTemp > target) {
+           decreaseTemp();
+       }
+       else if (roundedTemp < target) {
+           increaseTemp();
+       }
+   }
+
+
+   function decreaseTemp() {
+       if (roundedTemp > min) {
+           roundedTemp--;
+           updateGr();
+           updateTargetTemperature();
+           if (roundedTemp > 17) {
+               $(".fill1").css("transform", "rotate(" + (roundedTemp - 18) * 10 + "deg)").css("transition-delay", "0s");
+           } else if (roundedTemp == 17) {
+               $(".fill2").css("transform", "rotate(" + roundedTemp * 10 + "deg)").css("transition-delay", "0.5s");
+           } else {
+               $(".fill2").css("transform", "rotate(" + roundedTemp * 10 + "deg)").css("transition-delay", "0s");
+           }
+       }
+   }
+
+   function increaseTemp() {
+       if (roundedTemp < max) {
+           roundedTemp++;
+           updateGr();
+           updateTargetTemperature();
+           if (roundedTemp > 19) {
+               $(".fill1").css("transform", "rotate(" + (roundedTemp - 18) * 10 + "deg)").css("transition-delay", "0s");
+           } else if (roundedTemp == 19) {
+               $(".fill1").css("transform", "rotate(" + (roundedTemp - 18) * 10 + "deg)").css("transition-delay", "1s");
+           } else {
+               $(".fill2").css("transform", "rotate(" + roundedTemp * 10 + "deg)").css("transition-delay", "0s");
+           }
+       }
+   }
+
+   $(".minus").mousedown(function () {
+       $.ajax({
+       type: "POST",
+       url: '@Url.Action("DecrementTargetTemperature", "Thermostat")',
+       error: function(xhr, ajaxOptions, thrownError) {
+           alert(xhr.status);
+           alert(thrownError);
+       }
+   });
+   });
+
+   $(".plus").mousedown(function () {
+       $.ajax({
+       type: "POST",
+       url: '@Url.Action("IncrementTargetTemperature", "Thermostat")',
+       error: function(xhr, ajaxOptions, thrownError) {
+           alert(xhr.status);
+           alert(thrownError);
+       }
+   });
+   });
+    </script>
+}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-xs-6">
+            <div class="input-group">
+                <input type="text" id="connectionString" class="form-control" placeholder="Device connection String" aria-label="Device connection String" aria-describedby="basic-addon2">
+                <span class="input-group-btn">
+                    <button id="initButton" class="btn btn-default" type="button">Initialize</button>
+                </span>
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-6">
+            <h2>Status : <span id="status">Not Connected</span></h2>
+        </div>
+    </div>
+    <div class="alertContainer">
+    </div>
+    <div class="row thermostatContainer">
+        <div class="thermostat">
+            <div class="bar">
+                <div class="inner_bar"></div>
+                <div class='hold left'>
+                    <div class='fill fill1'></div>
+                </div>
+                <div class='hold right'>
+                    <div class='fill fill2'></div>
+                </div>
+                <span>Heating</span>
+            </div>
+            <div class="shadow">
+                <div class="shadow-cube"></div>
+            </div>
+            <div class="number">
+                <span class="ext">19</span>
+            </div>
+            <div class="center">
+                <span class="arrow minus"><i class="material-icons">keyboard_arrow_left</i></span>
+                <span class="arrow plus"><i class="material-icons">keyboard_arrow_right</i></span>
+                <div class="small">
+                    <span class="heat">19</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
