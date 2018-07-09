@@ -14,9 +14,10 @@ namespace DemoDevicesWebApplication.Controllers
         static Thermostat thermostat = null;
 
         [HttpPost]
-        public ActionResult Initialize(string connectionString)
+        public async Task<ActionResult> Initialize(string connectionString)
         {
             thermostat = new Thermostat(connectionString);
+            await thermostat.Initialize();
             return Json(new { success = true });
         }
 
@@ -70,6 +71,12 @@ namespace DemoDevicesWebApplication.Controllers
         public string ColorPalette()
         {
             return thermostat?.DesiredColorPalette ?? string.Empty;
+        }
+
+        [HttpGet]
+        public string Firmware()
+        {
+            return thermostat?.Firmware ?? "0.0.0.0";
         }
 
         [HttpGet]

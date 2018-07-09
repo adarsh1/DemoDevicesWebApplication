@@ -38,11 +38,6 @@
 
         function reset() {
             colorPalette = "";
-            colorRefresh();
-            temperatureRefresh();
-            targetRefresh();
-            statusRefresh();
-            alertRefresh();
         }
 
         var roundedTemp = 19;
@@ -50,11 +45,18 @@
         var targetRefreshInterval = 300;
         var temperatureRefreshInterval = 150;
         var statusRefreshInterval = 200;
+        var firmwareRefreshInterval = 300;
         var colorRefreshInterval = 500;
         var alertRefreshInterval = 400;
    var max = 34;
         var min = 2;
         uninitialize();
+        colorRefresh();
+        temperatureRefresh();
+        firmwareRefresh();
+        targetRefresh();
+        statusRefresh();
+        alertRefresh();
 
         window.addEventListener("beforeunload", function (event) {
             $.ajax({
@@ -122,6 +124,19 @@
        });
         }
 
+        function firmwareRefresh() {
+   $.ajax({
+       type: "Get",
+       url: '@Url.Action("Firmware", "Thermostat")',
+       success: updateFirmware,
+       error: function (xhr, ajaxOptions, thrownError) {
+           setTimeout(firmwareRefresh, firmwareRefreshInterval);
+           alert(xhr.status);
+           alert(thrownError);
+       }
+       });
+        }
+
         function alertRefresh() {
         $.ajax({
        type: "Get",
@@ -171,6 +186,12 @@
             setTimeout(statusRefresh, statusRefreshInterval);
             $("#status").html(status);
         }
+
+        function updateFirmware(firmware) {
+            setTimeout(firmwareRefresh, firmwareRefreshInterval);
+            $("#firmware").html(firmware);
+        }
+
         function updateColorBackground(palette) {
             setTimeout(colorRefresh, colorRefreshInterval);
             if (colorMaps[palette]) {
@@ -251,52 +272,57 @@
     </script>
 }
 
-<div class="container-fluid">
-    <div class="row">
-        <div class="col-xs-6">
-            <div class="input-group">
-                <input type="text" id="connectionString" class="form-control" placeholder="Device connection String" aria-label="Device connection String" aria-describedby="basic-addon2">
-                <span class="input-group-btn">
-                    <button id="initButton" class="btn btn-default" type="button">Initialize</button>
-                </span>
-                <span class="input-group-btn">
-                    <button id="uninitButton" class="btn btn-default" type="button">Un-Initialize</button>
-                </span>
-            </div>
-        </div>
-    </div>
-    <div class="row">
-        <div class="col-md-6">
-            <h2>Status : <span id="status">Not Connected</span></h2>
-        </div>
-    </div>
-    <div class="alertContainer">
-    </div>
-    <div class="row thermostatContainer">
-        <div class="thermostat">
-            <div class="bar">
-                <div class="inner_bar"></div>
-                <div class='hold left'>
-                    <div class='fill fill1'></div>
-                </div>
-                <div class='hold right'>
-                    <div class='fill fill2'></div>
-                </div>
-                <span>Heating</span>
-            </div>
-            <div class="shadow">
-                <div class="shadow-cube"></div>
-            </div>
-            <div class="number">
-                <span class="ext">19</span>
-            </div>
-            <div class="center">
-                <span class="arrow minus"><i class="material-icons">keyboard_arrow_left</i></span>
-                <span class="arrow plus"><i class="material-icons">keyboard_arrow_right</i></span>
-                <div class="small">
-                    <span class="heat">19</span>
+    <div class="container-fluid">
+        <div class="row" style="padding-top:0.5em;">
+            <div class="col-xs-6">
+                <div class="input-group">
+                    <input type="text" id="connectionString" class="form-control" placeholder="Device connection String" aria-label="Device connection String" aria-describedby="basic-addon2">
+                    <span class="input-group-btn">
+                        <button id="initButton" class="btn btn-default" type="button">Initialize</button>
+                    </span>
+                    <span class="input-group-btn">
+                        <button id="uninitButton" class="btn btn-default" type="button">Un-Initialize</button>
+                    </span>
                 </div>
             </div>
         </div>
+        <div class="row">
+            <div class="col-md-6">
+                <h2>Status : <span id="status">Not Connected</span></h2>
+            </div>
+        </div>
+        <div class="alertContainer">
+        </div>
+        <div class="row thermostatContainer">
+            <div class="thermostat">
+                <div class="bar">
+                    <div class="inner_bar"></div>
+                    <div class='hold left'>
+                        <div class='fill fill1'></div>
+                    </div>
+                    <div class='hold right'>
+                        <div class='fill fill2'></div>
+                    </div>
+                    <span>Heating</span>
+                </div>
+                <div class="shadow">
+                    <div class="shadow-cube"></div>
+                </div>
+                <div class="number">
+                    <span class="ext">19</span>
+                </div>
+                <div class="center">
+                    <span class="arrow minus"><i class="material-icons">keyboard_arrow_left</i></span>
+                    <span class="arrow plus"><i class="material-icons">keyboard_arrow_right</i></span>
+                    <div class="small">
+                        <span class="heat">19</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <h2>Firmware : <span id="firmware">0.0.0.0</span></h2>
+            </div>
+        </div>
     </div>
-</div>

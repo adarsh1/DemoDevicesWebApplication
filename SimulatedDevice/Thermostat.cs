@@ -13,6 +13,7 @@ namespace SimulatedDevices
     public class Thermostat
     {
         const string targetTempProperty = "targetTempProperty";
+        const string firmwareProperty = "firmware";
         const string colorPaletteProperty = "colorPalette";
 
         private string deviceConnectionString;
@@ -26,6 +27,8 @@ namespace SimulatedDevices
         int _targetTemperature;
 
         public string DesiredColorPalette { get; private set; }
+
+        public string Firmware { get; private set; }
 
         public string Status { get; private set; }
 
@@ -46,12 +49,19 @@ namespace SimulatedDevices
             Temperature = 19;
             Status = "Normal";
             DesiredColorPalette = "inferno";
+            Firmware = "0.0.0.0";
             _targetTemperature = 19;
             Messages = new ConcurrentQueue<string>();
-            Task.Run(() => SetupCallBacks());
             TelemetryTask = Task.Run(() => SendTelemetry(cancelationTokenSource.Token));
             UpdateTask = Task.Run(() => UpdateTemperature(cancelationTokenSource.Token));
             MessagesTask = Task.Run(() => RecieveMessages(cancelationTokenSource.Token));
+        }
+
+        public async Task Initialize()
+        {
+            await SetupCallBacks();
+            var twin = await client.GetTwinAsync();
+            await DesiredPropertyUpdateCallback(twin.Properties.Desired, null);
         }
 
         async Task SetupCallBacks()
@@ -69,6 +79,9 @@ namespace SimulatedDevices
                 switch (property.Key)
                 {
                     case colorPaletteProperty: DesiredColorPalette = desiredProperties[colorPaletteProperty];
+                        break;
+                    case firmwareProperty:
+                        Firmware = desiredProperties[firmwareProperty];
                         break;
                     default: Console.WriteLine(property.ToString());
                         break;
