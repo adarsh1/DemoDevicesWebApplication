@@ -13,6 +13,7 @@ namespace SimulatedDevices
     public class Thermostat
     {
         const string targetTempProperty = "targetTempProperty";
+        const string typeProperty = "Type";
         const string firmwareProperty = "firmware";
         const string colorPaletteProperty = "colorPalette";
 
@@ -20,6 +21,7 @@ namespace SimulatedDevices
 
         private DeviceClient client;
         private string DeviceId = "";
+        private SemaphoreSlim deviceSemaphore;
 
         public float Temperature { get; private set; }
         public int TargetTemperature => _targetTemperature;
@@ -46,6 +48,7 @@ namespace SimulatedDevices
             var connectionStringBuilder = IotHubConnectionStringBuilder.Create(deviceConnectionString);
             DeviceId = connectionStringBuilder.DeviceId;
             cancelationTokenSource = new CancellationTokenSource();
+            deviceSemaphore = new SemaphoreSlim(1, 1);
             Temperature = 19;
             Status = "Normal";
             DesiredColorPalette = "inferno";
@@ -62,6 +65,17 @@ namespace SimulatedDevices
             await SetupCallBacks();
             var twin = await client.GetTwinAsync();
             await DesiredPropertyUpdateCallback(twin.Properties.Desired, null);
+
+            TwinCollection properties = new TwinCollection();
+            properties[typeProperty] = "stack";
+            try
+            {
+                await client.UpdateReportedPropertiesAsync(properties);
+            }
+            catch (Exception)
+            {
+
+            }
         }
 
         async Task SetupCallBacks()
@@ -72,7 +86,7 @@ namespace SimulatedDevices
             await client.SetDesiredPropertyUpdateCallbackAsync(DesiredPropertyUpdateCallback, null);
         }
 
-        Task DesiredPropertyUpdateCallback(TwinCollection desiredProperties, object userContext)
+        async Task DesiredPropertyUpdateCallback(TwinCollection desiredProperties, object userContext)
         {
             foreach(KeyValuePair<string, object> property in desiredProperties)
             {
@@ -81,14 +95,28 @@ namespace SimulatedDevices
                     case colorPaletteProperty: DesiredColorPalette = desiredProperties[colorPaletteProperty];
                         break;
                     case firmwareProperty:
-                        Firmware = desiredProperties[firmwareProperty];
+                        if(!Firmware.Equals(desiredProperties[firmwareProperty]))
+                        {
+                            await deviceSemaphore.WaitAsync();
+                            try
+                            {
+                                var tempStatus = Status;
+                                Status = "Updating Firmware...";
+                                await Task.Delay(5000);
+                                Firmware = desiredProperties[firmwareProperty];
+                                Status = tempStatus;
+                            }
+                            finally
+                            {
+                                deviceSemaphore.Release();
+                            }
+                        }
                         break;
                     default: Console.WriteLine(property.ToString());
                         break;
                 }
             }
 
-            return Task.FromResult(true);
         }
 
         async Task<MethodResponse> Extinguish(MethodRequest methodRequest, object userContext)
@@ -178,23 +206,30 @@ namespace SimulatedDevices
         {
             while (!token.IsCancellationRequested)
             {
-                string status = "Normal";
-                if(Math.Abs(Temperature - TargetTemperature) >= 0.2f)
+                await deviceSemaphore.WaitAsync();
+                try
                 {
-                    if (Temperature > TargetTemperature)
+                    string status = "Normal";
+                    if (Math.Abs(Temperature - TargetTemperature) >= 0.2f)
                     {
-                        Temperature -= 0.2f;
-                        status = "Cooling";
+                        if (Temperature > TargetTemperature)
+                        {
+                            Temperature -= 0.2f;
+                            status = "Cooling";
+                        }
+                        else if (Temperature < TargetTemperature)
+                        {
+                            Temperature += 0.2f;
+                            status = "Heating";
+                        }
                     }
-                    else if (Temperature < TargetTemperature)
-                    {
-                        Temperature += 0.2f;
-                        status = "Heating";
-                    }
-                }
-                Status = status;
+                    Status = status;
 
-                await Task.Delay(350);
+                    await Task.Delay(350);
+                }
+                finally{
+                    deviceSemaphore.Release();
+                }
             }
         }
 
@@ -205,6 +240,7 @@ namespace SimulatedDevices
             {
                 await client.CloseAsync();
                 client?.Dispose();
+                deviceSemaphore?.Dispose();
             }
         }
     }
