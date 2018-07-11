@@ -68,6 +68,19 @@ namespace SimulatedDevices
 
             TwinCollection properties = new TwinCollection();
             properties[typeProperty] = "stack";
+            properties["Telemetry"] = new {
+                TemperatureSchema = new {
+                    Interval = "00:00:01",
+                    MessageTemplate = "{\"temperature\":${temperature}}",
+                    MessageSchema = new {
+                        Name = "temperatureSchema",
+                        Format = "JSON",
+                        Fields = new {
+                            temperature = "Double" 
+                        }
+                    }
+                }
+            };
             try
             {
                 await client.UpdateReportedPropertiesAsync(properties);
@@ -179,7 +192,10 @@ namespace SimulatedDevices
                     temperature = Temperature
                 };
                 var messageString = JsonConvert.SerializeObject(telemetryDataPoint);
-                var message = new Message(Encoding.ASCII.GetBytes(messageString));
+                var message = new Message(Encoding.UTF8.GetBytes(messageString));
+                message.Properties.Add("$$CreationTimeUtc", DateTime.UtcNow.ToString());
+                message.Properties.Add("$$MessageSchema", "temperatureSchema");
+                message.Properties.Add("$$ContentType", "JSON");
                 await client.SendEventAsync(message);
                 await Task.Delay(1000);
             }
