@@ -14,7 +14,8 @@ namespace SimulatedDevices
     {
         const string targetTempProperty = "targetTempProperty";
         const string typeProperty = "Type";
-        const string firmwareProperty = "firmware";
+        const string firmwareProperty = "Firmware";
+        const string desiredFirmwareProperty = "DesiredFirmware";
         const string colorPaletteProperty = "colorPalette";
 
         private string deviceConnectionString;
@@ -67,7 +68,8 @@ namespace SimulatedDevices
             await DesiredPropertyUpdateCallback(twin.Properties.Desired, null);
 
             TwinCollection properties = new TwinCollection();
-            properties[typeProperty] = "stack";
+            properties[typeProperty] = "Thermostat";
+            properties["SupportedMethods"] = "Extinguish,Increment,Decrement";
             properties["Telemetry"] = new {
                 TemperatureSchema = new {
                     Interval = "00:00:01",
@@ -81,6 +83,7 @@ namespace SimulatedDevices
                     }
                 }
             };
+            properties[firmwareProperty] = Firmware;
             try
             {
                 await client.UpdateReportedPropertiesAsync(properties);
@@ -107,8 +110,8 @@ namespace SimulatedDevices
                 {
                     case colorPaletteProperty: DesiredColorPalette = desiredProperties[colorPaletteProperty];
                         break;
-                    case firmwareProperty:
-                        if(!Firmware.Equals(desiredProperties[firmwareProperty]))
+                    case desiredFirmwareProperty:
+                        if(!Firmware.Equals(desiredProperties[desiredFirmwareProperty]))
                         {
                             await deviceSemaphore.WaitAsync();
                             try
@@ -116,8 +119,18 @@ namespace SimulatedDevices
                                 var tempStatus = Status;
                                 Status = "Updating Firmware...";
                                 await Task.Delay(5000);
-                                Firmware = desiredProperties[firmwareProperty];
+                                Firmware = desiredProperties[desiredFirmwareProperty];
                                 Status = tempStatus;
+                                TwinCollection properties = new TwinCollection();
+                                properties[desiredFirmwareProperty] = Firmware;
+                                try
+                                {
+                                    await client.UpdateReportedPropertiesAsync(properties);
+                                }
+                                catch (Exception)
+                                {
+
+                                }
                             }
                             finally
                             {

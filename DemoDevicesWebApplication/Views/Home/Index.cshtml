@@ -1,6 +1,65 @@
-﻿<div class="jumbotron">
+﻿
+@section scripts {
+<script>
+        $(document).ready(function () {
+             $("#deviceButton").mousedown(function () {
+            $.ajax({
+                type: "GET",
+                data: { "hubConnectionString": $("#connectionString").val(), "deviceId": $("#deviceId").val() },
+                url: '@Url.Action("DeviceConnection", "IotHub")',
+                success: displayDevice,
+       error: function(xhr, ajaxOptions, thrownError) {
+           alert(xhr.status);
+           alert(thrownError);
+          }
+        });
+            });
+
+            $("#copyButton").mousedown(function () {
+                var input = document.querySelector('#deviceConnection');
+                input.setSelectionRange(0, input.value.length + 1);
+                var success = document.execCommand('copy');
+       });
+
+        function displayDevice(deviceConnection) {
+            $("#deviceConnection").html(deviceConnection);
+        }
+ });
+
+</script>
+}
+
+<div class="jumbotron">
     <h1>IoT Device Demos</h1>
     <p class="lead">
         Here you will find some Demos for Iot Devices.
     </p>
+</div>
+
+<div class="container">
+    <h2>Create a Device</h2>
+    <div class="row" style="padding-top:0.5em;">
+        <div class="col-xs-12">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <div class="input-group">
+                        <input type="text" id="connectionString" class="form-control" placeholder="Hub connection String" aria-label="Hub connection String" aria-describedby="basic-addon2">
+                        <input type="text" id="deviceId" class="form-control" placeholder="Device Id" aria-label="Device Id" aria-describedby="basic-addon2">
+                        <span class="input-group-btn">
+                            <button id="deviceButton" class="btn btn-default" type="button">CreateDevice</button>
+                        </span>
+                    </div>
+                </div>
+                <div class="panel-body">
+                    <p id="deviceConnection">
+                    </p>
+                    <div class="input-group">
+                        <span class="input-group-btn">
+                            <button id="copyButton" class="btn btn-default" type="button">Copy</button>
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
