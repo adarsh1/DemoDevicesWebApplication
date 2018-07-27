@@ -17,7 +17,14 @@ namespace SimulatedDevices
         const string firmwareProperty = "Firmware";
         const string desiredFirmwareProperty = "DesiredFirmware";
         const string colorPaletteProperty = "colorPalette";
-
+        const string StandByStatus = "StandBy";
+        private const string HeatingStatus = "Heating";
+        private const string CoolingStatus = "Cooling";
+        private const string DeviceType = "Thermostat";
+        private const string MessageSchema = "temperatureSchema";
+        private const string MessageTemplate = "{\"temperature\":${temperature}}";
+        private const string SupportedMethodsProperty = "SupportedMethods";
+        private const string TelemetryProperty = "Telemetry";
         private string deviceConnectionString;
 
         private DeviceClient client;
@@ -51,7 +58,7 @@ namespace SimulatedDevices
             cancelationTokenSource = new CancellationTokenSource();
             deviceSemaphore = new SemaphoreSlim(1, 1);
             Temperature = 19;
-            Status = "Normal";
+            Status = StandByStatus;
             DesiredColorPalette = "inferno";
             Firmware = "0.0.0.0";
             _targetTemperature = 19;
@@ -68,14 +75,14 @@ namespace SimulatedDevices
             await DesiredPropertyUpdateCallback(twin.Properties.Desired, null);
 
             TwinCollection properties = new TwinCollection();
-            properties[typeProperty] = "Thermostat";
-            properties["SupportedMethods"] = "Extinguish,Increment,Decrement";
-            properties["Telemetry"] = new {
+            properties[typeProperty] = DeviceType;
+            properties[SupportedMethodsProperty] = nameof(AirConditioning)+ "," + nameof(IncrementCloud) + "," + nameof(DecrementCloud);
+            properties[TelemetryProperty] = new {
                 TemperatureSchema = new {
                     Interval = "00:00:01",
-                    MessageTemplate = "{\"temperature\":${temperature}}",
+                    MessageTemplate = Thermostat.MessageTemplate,
                     MessageSchema = new {
-                        Name = "temperatureSchema",
+                        Name = MessageSchema,
                         Format = "JSON",
                         Fields = new {
                             temperature = "Double" 
@@ -96,9 +103,9 @@ namespace SimulatedDevices
 
         async Task SetupCallBacks()
         {
-            await client.SetMethodHandlerAsync("Extinguish", Extinguish, null);
-            await client.SetMethodHandlerAsync("Increment", IncrementCloud, null);
-            await client.SetMethodHandlerAsync("Decrement", DecrementCloud, null);
+            await client.SetMethodHandlerAsync(nameof(AirConditioning), AirConditioning, null);
+            await client.SetMethodHandlerAsync(nameof(IncrementCloud), IncrementCloud, null);
+            await client.SetMethodHandlerAsync(nameof(DecrementCloud), DecrementCloud, null);
             await client.SetDesiredPropertyUpdateCallbackAsync(DesiredPropertyUpdateCallback, null);
         }
 
@@ -145,7 +152,7 @@ namespace SimulatedDevices
 
         }
 
-        async Task<MethodResponse> Extinguish(MethodRequest methodRequest, object userContext)
+        async Task<MethodResponse> AirConditioning(MethodRequest methodRequest, object userContext)
         {
             Messages.Enqueue("Critical temperature reached. Cooling Requested");
             await SetTargetInternal(16);
@@ -207,7 +214,7 @@ namespace SimulatedDevices
                 var messageString = JsonConvert.SerializeObject(telemetryDataPoint);
                 var message = new Message(Encoding.UTF8.GetBytes(messageString));
                 message.Properties.Add("$$CreationTimeUtc", DateTime.UtcNow.ToString());
-                message.Properties.Add("$$MessageSchema", "temperatureSchema");
+                message.Properties.Add("$$MessageSchema", MessageSchema);
                 message.Properties.Add("$$ContentType", "JSON");
                 await client.SendEventAsync(message);
                 await Task.Delay(1000);
@@ -238,18 +245,18 @@ namespace SimulatedDevices
                 await deviceSemaphore.WaitAsync();
                 try
                 {
-                    string status = "Normal";
+                    string status = StandByStatus;
                     if (Math.Abs(Temperature - TargetTemperature) >= 0.2f)
                     {
                         if (Temperature > TargetTemperature)
                         {
                             Temperature -= 0.2f;
-                            status = "Cooling";
+                            status = CoolingStatus;
                         }
                         else if (Temperature < TargetTemperature)
                         {
                             Temperature += 0.2f;
-                            status = "Heating";
+                            status = HeatingStatus;
                         }
                     }
                     Status = status;
