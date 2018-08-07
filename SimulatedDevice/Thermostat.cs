@@ -4,6 +4,7 @@ using Newtonsoft.Json;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -31,6 +32,8 @@ namespace SimulatedDevices
         private string DeviceId = "";
         private SemaphoreSlim deviceSemaphore;
 
+        private Statistics stats;
+
         public float Temperature { get; private set; }
         public int TargetTemperature => _targetTemperature;
 
@@ -49,6 +52,29 @@ namespace SimulatedDevices
         Task UpdateTask = null;
         Task MessagesTask = null;
 
+        class Statistics
+        {
+            public Statistics()
+            {
+                creationTime = DateTime.UtcNow;
+            }
+
+            private DateTime creationTime;
+            private long exceptionsEncountered;
+
+            public long ExceptionsEncountered => exceptionsEncountered;
+
+            public TimeSpan Uptime => DateTime.UtcNow-creationTime;
+
+            public void IncrementExceptionsEncountered()
+            {
+                Interlocked.Increment(ref exceptionsEncountered);
+            }
+
+            [JsonIgnore]
+            public string Json => JsonConvert.SerializeObject(this, Formatting.Indented);
+        }
+
         public Thermostat(string connectionString)
         {
             deviceConnectionString = connectionString;
@@ -62,6 +88,7 @@ namespace SimulatedDevices
             DesiredColorPalette = "inferno";
             Firmware = "0.0.0.0";
             _targetTemperature = 19;
+            stats = new Statistics();
             Messages = new ConcurrentQueue<string>();
             TelemetryTask = Task.Run(() => SendTelemetry(cancelationTokenSource.Token));
             UpdateTask = Task.Run(() => UpdateTemperature(cancelationTokenSource.Token));
@@ -97,7 +124,7 @@ namespace SimulatedDevices
             }
             catch (Exception)
             {
-
+                stats.IncrementExceptionsEncountered();
             }
         }
 
@@ -107,6 +134,26 @@ namespace SimulatedDevices
             await client.SetMethodHandlerAsync(nameof(IncrementCloud), IncrementCloud, null);
             await client.SetMethodHandlerAsync(nameof(DecrementCloud), DecrementCloud, null);
             await client.SetDesiredPropertyUpdateCallbackAsync(DesiredPropertyUpdateCallback, null);
+        }
+
+        public async Task UploadStatistics()
+        {
+            string fileName = $"{DeviceId}_Stats/{DateTime.UtcNow.ToString("yyyy/MMMM/dd/hh:MM tt")}.json";
+
+            using (var sourceData = new MemoryStream(System.Text.Encoding.Default.GetBytes(stats.Json)))
+            {
+                try
+                {
+                    await client.UploadToBlobAsync(fileName, sourceData);
+                    Messages.Enqueue("Device data uploaded successfully");
+                }
+                catch (Exception)
+                {
+                    stats.IncrementExceptionsEncountered();
+                    throw;
+                }
+            }
+
         }
 
         async Task DesiredPropertyUpdateCallback(TwinCollection desiredProperties, object userContext)
@@ -136,7 +183,7 @@ namespace SimulatedDevices
                                 }
                                 catch (Exception)
                                 {
-
+                                    stats.IncrementExceptionsEncountered();
                                 }
                             }
                             finally
@@ -199,7 +246,7 @@ namespace SimulatedDevices
             }
             catch(Exception)
             {
-
+                stats.IncrementExceptionsEncountered();
             }
         }
 
@@ -216,7 +263,16 @@ namespace SimulatedDevices
                 message.Properties.Add("$$CreationTimeUtc", DateTime.UtcNow.ToString());
                 message.Properties.Add("$$MessageSchema", MessageSchema);
                 message.Properties.Add("$$ContentType", "JSON");
-                await client.SendEventAsync(message);
+                message.Properties.Add("$ThresholdExceeded", telemetryDataPoint.temperature>25?"True":"False");
+                try
+                {
+                    await client.SendEventAsync(message);
+                }
+                catch (Exception)
+                {
+                    stats.IncrementExceptionsEncountered();
+                }
+
                 await Task.Delay(1000);
             }
         }
@@ -234,7 +290,10 @@ namespace SimulatedDevices
                         await client.CompleteAsync(message);
                     }
                 }
-                catch (Exception) { };
+                catch (Exception)
+                {
+                    stats.IncrementExceptionsEncountered();
+                }
             }
         }
 

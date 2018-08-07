@@ -34,6 +34,17 @@ namespace DemoDevicesWebApplication.Controllers
         }
 
         [HttpPost]
+        public async Task<ActionResult> UploadStatistics()
+        {
+            if (thermostat != null)
+            {
+                await thermostat.UploadStatistics();
+            }
+
+            return Json(new { success = true });
+        }
+
+        [HttpPost]
         public async Task<ActionResult> IncrementTargetTemperature()
         {
             if (thermostat != null)
