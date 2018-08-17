@@ -17,7 +17,19 @@
 
             $("#copyButton").mousedown(function () {
                 var input = document.querySelector('#deviceConnection');
-                input.setSelectionRange(0, input.value.length + 1);
+
+                if (window.getSelection) {
+                    selection = window.getSelection();
+                    range = document.createRange();
+                    range.selectNodeContents(input);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                } else if (document.body.createTextRange) {
+                    range = document.body.createTextRange();
+                    range.moveToElementText(input);
+                    range.select();
+                }
+
                 var success = document.execCommand('copy');
        });
 

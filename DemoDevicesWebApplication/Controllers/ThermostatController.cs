@@ -14,9 +14,9 @@ namespace DemoDevicesWebApplication.Controllers
         static Thermostat thermostat = null;
 
         [HttpPost]
-        public async Task<ActionResult> Initialize(string connectionString)
+        public async Task<ActionResult> Initialize(string connectionString, int transportType)
         {
-            thermostat = new Thermostat(connectionString);
+            thermostat = new Thermostat(connectionString, transportType);
             await thermostat.Initialize();
             return Json(new { success = true });
         }

@@ -10,7 +10,7 @@
         $("#initButton").mousedown(function () {
             $.ajax({
                 type: "POST",
-                data: { "connectionString":$("#connectionString").val() },
+                data: { "connectionString": $("#connectionString").val(), "transportType": parseInt($("#transportType").val()) },
                 url: '@Url.Action("Initialize", "Thermostat")',
                 success: reset,
                 error: alertError
@@ -158,7 +158,7 @@
             setTimeout(alertRefresh, alertRefreshInterval);
             if (!message)
                 return;
-            $(".alertContainer").append("<div class=\"alert alert-info fade in\"><a href=\"#\" class=\"close\" data-dismiss=\"alert\">&times;</a><strong>Note! </strong>" + message +"</div>")
+            $(".alertContainer").append("<div class=\"alert alert-info fade in\"><a href=\"#\" class=\"close\" data-dismiss=\"alert\">&times;</a><strong>Note! </strong>" + message + "</div>");
         }
 
         function statusRefresh() {
@@ -230,7 +230,7 @@
            updateGr();
            if (roundedTemp > 17) {
                $(".fill1").css("transform", "rotate(" + (roundedTemp - 18) * 10 + "deg)").css("transition-delay", "0s");
-           } else if (roundedTemp == 17) {
+           } else if (roundedTemp === 17) {
                $(".fill2").css("transform", "rotate(" + roundedTemp * 10 + "deg)").css("transition-delay", "0.5s");
            } else {
                $(".fill2").css("transform", "rotate(" + roundedTemp * 10 + "deg)").css("transition-delay", "0s");
@@ -244,7 +244,7 @@
            updateGr();
            if (roundedTemp > 19) {
                $(".fill1").css("transform", "rotate(" + (roundedTemp - 18) * 10 + "deg)").css("transition-delay", "0s");
-           } else if (roundedTemp == 19) {
+           } else if (roundedTemp === 19) {
                $(".fill1").css("transform", "rotate(" + (roundedTemp - 18) * 10 + "deg)").css("transition-delay", "1s");
            } else {
                $(".fill2").css("transform", "rotate(" + roundedTemp * 10 + "deg)").css("transition-delay", "0s");
@@ -286,6 +286,22 @@
                     </span>
                     <span class="input-group-btn">
                         <button id="uninitButton" class="btn btn-default" type="button">Un-Initialize</button>
+                    </span>
+                </div>
+            </div>
+            <div class="col-xs-6">
+                <div class="input-group">
+                    <span class="input-group-btn">
+                        Transport Type:
+                        <select id="transportType" class="form-control">
+                            <option selected="selected" value="0">Amqp</option>
+                            <option value="1">Http1</option>
+                            <option value="2">Amqp_WebSocket_Only</option>
+                            <option value="3">Amqp_Tcp_Only</option>
+                            <option value="4">Mqtt</option>
+                            <option value="5">Mqtt_WebSocket_Only</option>
+                            <option value="6">Mqtt_Tcp_Only</option>
+                        </select>
                     </span>
                 </div>
             </div>

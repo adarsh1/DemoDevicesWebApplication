@@ -15,6 +15,7 @@ namespace SimulatedDevices
     {
         const string targetTempProperty = "targetTempProperty";
         const string typeProperty = "Type";
+        const string transportTypeProperty = "TransportType";
         const string firmwareProperty = "Firmware";
         const string desiredFirmwareProperty = "DesiredFirmware";
         const string colorPaletteProperty = "colorPalette";
@@ -36,6 +37,8 @@ namespace SimulatedDevices
 
         public float Temperature { get; private set; }
         public int TargetTemperature => _targetTemperature;
+
+        TransportType transportType;
 
         int _targetTemperature;
 
@@ -61,6 +64,7 @@ namespace SimulatedDevices
 
             private DateTime creationTime;
             private long exceptionsEncountered;
+            private string log;
 
             public long ExceptionsEncountered => exceptionsEncountered;
 
@@ -75,10 +79,11 @@ namespace SimulatedDevices
             public string Json => JsonConvert.SerializeObject(this, Formatting.Indented);
         }
 
-        public Thermostat(string connectionString)
+        public Thermostat(string connectionString, int transportTypeInt)
         {
             deviceConnectionString = connectionString;
-            client = DeviceClient.CreateFromConnectionString(deviceConnectionString, TransportType.Amqp);
+            this.transportType = (TransportType)transportTypeInt;
+            client = DeviceClient.CreateFromConnectionString(deviceConnectionString, this.transportType);
             var connectionStringBuilder = IotHubConnectionStringBuilder.Create(deviceConnectionString);
             DeviceId = connectionStringBuilder.DeviceId;
             cancelationTokenSource = new CancellationTokenSource();
@@ -102,6 +107,7 @@ namespace SimulatedDevices
             await DesiredPropertyUpdateCallback(twin.Properties.Desired, null);
 
             TwinCollection properties = new TwinCollection();
+            properties[transportTypeProperty] = this.transportType.ToString();
             properties[typeProperty] = DeviceType;
             properties[SupportedMethodsProperty] = nameof(AirConditioning)+ "," + nameof(IncrementCloud) + "," + nameof(DecrementCloud);
             properties[TelemetryProperty] = new {
