@@ -5,7 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
-using SimulatedDevices;
+using SimulatedDevice;
 
 namespace DemoDevicesWebApplication.Controllers
 {

@@ -9,7 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace SimulatedDevices
+namespace SimulatedDevice
 {
     public class Thermostat
     {
@@ -60,19 +60,35 @@ namespace SimulatedDevices
             public Statistics()
             {
                 creationTime = DateTime.UtcNow;
+                Informational = new SizeLimitedQueue<string>(200);
+                Error = new SizeLimitedQueue<string>(100);
             }
 
             private DateTime creationTime;
             private long exceptionsEncountered;
-            private string log;
 
             public long ExceptionsEncountered => exceptionsEncountered;
 
             public TimeSpan Uptime => DateTime.UtcNow-creationTime;
 
-            public void IncrementExceptionsEncountered()
+            public SizeLimitedQueue<String> Informational { get; private set; }
+
+            public SizeLimitedQueue<String> Error { get; private set; }
+
+            public void LogExceptionsEncountered(Exception e)
             {
                 Interlocked.Increment(ref exceptionsEncountered);
+                Log(e.ToString(), Error);
+            }
+
+            public void Log(string message)
+            {
+                Log(message, Informational);
+            }
+
+            void Log(string message, SizeLimitedQueue<string> queue)
+            {
+                queue.Enqueue($"{DateTime.UtcNow} {message}");
             }
 
             [JsonIgnore]
@@ -81,6 +97,7 @@ namespace SimulatedDevices
 
         public Thermostat(string connectionString, int transportTypeInt)
         {
+            stats = new Statistics();
             deviceConnectionString = connectionString;
             this.transportType = (TransportType)transportTypeInt;
             client = DeviceClient.CreateFromConnectionString(deviceConnectionString, this.transportType);
@@ -93,7 +110,6 @@ namespace SimulatedDevices
             DesiredColorPalette = "inferno";
             Firmware = "0.0.0.0";
             _targetTemperature = 19;
-            stats = new Statistics();
             Messages = new ConcurrentQueue<string>();
             TelemetryTask = Task.Run(() => SendTelemetry(cancelationTokenSource.Token));
             UpdateTask = Task.Run(() => UpdateTemperature(cancelationTokenSource.Token));
@@ -128,10 +144,12 @@ namespace SimulatedDevices
             {
                 await client.UpdateReportedPropertiesAsync(properties);
             }
-            catch (Exception)
+            catch (Exception e)
             {
-                stats.IncrementExceptionsEncountered();
+                stats.LogExceptionsEncountered(e);
             }
+
+            stats.Log($"Initialized {DeviceId} {this.transportType}");
         }
 
         async Task SetupCallBacks()
@@ -144,6 +162,8 @@ namespace SimulatedDevices
 
         public async Task UploadStatistics()
         {
+            stats.Log($"Uploading Stats {DeviceId} {this.transportType}");
+
             string fileName = $"{DeviceId}_Stats/{DateTime.UtcNow.ToString("yyyy/MMMM/dd/hh:MM tt")}.json";
 
             using (var sourceData = new MemoryStream(System.Text.Encoding.Default.GetBytes(stats.Json)))
@@ -153,9 +173,9 @@ namespace SimulatedDevices
                     await client.UploadToBlobAsync(fileName, sourceData);
                     Messages.Enqueue("Device data uploaded successfully");
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
-                    stats.IncrementExceptionsEncountered();
+                    stats.LogExceptionsEncountered(e);
                     throw;
                 }
             }
@@ -168,7 +188,9 @@ namespace SimulatedDevices
             {
                 switch (property.Key)
                 {
-                    case colorPaletteProperty: DesiredColorPalette = desiredProperties[colorPaletteProperty];
+                    case colorPaletteProperty:
+                        DesiredColorPalette = desiredProperties[colorPaletteProperty];
+                        stats.Log($"Changing Pallete to {DesiredColorPalette}");
                         break;
                     case desiredFirmwareProperty:
                         if(!Firmware.Equals(desiredProperties[desiredFirmwareProperty]))
@@ -187,10 +209,12 @@ namespace SimulatedDevices
                                 {
                                     await client.UpdateReportedPropertiesAsync(properties);
                                 }
-                                catch (Exception)
+                                catch (Exception e)
                                 {
-                                    stats.IncrementExceptionsEncountered();
+                                    stats.LogExceptionsEncountered(e);
                                 }
+
+                                stats.Log($"Firmware Updated to {Firmware}");
                             }
                             finally
                             {
@@ -207,6 +231,7 @@ namespace SimulatedDevices
 
         async Task<MethodResponse> AirConditioning(MethodRequest methodRequest, object userContext)
         {
+            stats.Log($"AirConditioning Critical temperature reached.Cooling Requested");
             Messages.Enqueue("Critical temperature reached. Cooling Requested");
             await SetTargetInternal(16);
             return new MethodResponse(200);
@@ -250,10 +275,11 @@ namespace SimulatedDevices
             {
                 await client.UpdateReportedPropertiesAsync(properties);
             }
-            catch(Exception)
+            catch(Exception e)
             {
-                stats.IncrementExceptionsEncountered();
+                stats.LogExceptionsEncountered(e);
             }
+            stats.Log($"Target Temperature updated to {TargetTemperature}");
         }
 
         async Task SendTelemetry(CancellationToken token)
@@ -274,11 +300,12 @@ namespace SimulatedDevices
                 {
                     await client.SendEventAsync(message);
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
-                    stats.IncrementExceptionsEncountered();
+                    stats.LogExceptionsEncountered(e);
                 }
 
+                stats.Log($"telemetry Sent");
                 await Task.Delay(1000);
             }
         }
@@ -292,13 +319,15 @@ namespace SimulatedDevices
                     var message = await client.ReceiveAsync();
                     if (message != null)
                     {
-                        Messages.Enqueue(Encoding.ASCII.GetString(message.GetBytes()));
+                        var msg = Encoding.ASCII.GetString(message.GetBytes());
+                        Messages.Enqueue(msg);
                         await client.CompleteAsync(message);
+                        stats.Log($"Recieved C2D Message {msg}");
                     }
                 }
-                catch (Exception)
+                catch (Exception e)
                 {
-                    stats.IncrementExceptionsEncountered();
+                    stats.LogExceptionsEncountered(e);
                 }
             }
         }

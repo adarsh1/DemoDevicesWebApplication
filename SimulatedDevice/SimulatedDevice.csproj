@@ -182,6 +182,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SizeLimitedQueue.cs" />
     <Compile Include="Thermostat.cs" />
   </ItemGroup>
   <ItemGroup>
