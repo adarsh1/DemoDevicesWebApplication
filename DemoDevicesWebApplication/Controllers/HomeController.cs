@@ -22,5 +22,13 @@ namespace DemoDevicesWebApplication.Controllers
 
             return View();
         }
+
+        public ActionResult Edge()
+        {
+            ViewBag.Title = "Edge Simulation";
+            ViewBag.Message = "Edge.";
+
+            return View();
+        }
     }
 }
