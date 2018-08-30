@@ -72,50 +72,54 @@ namespace SimulatedDevice
             Console.WriteLine("Create receiver on partition: " + partition);
             while (!ct.IsCancellationRequested)
             {
-                Console.WriteLine("Listening for messages on: " + partition);
-                // Check for EventData - this methods times out if there is nothing to retrieve.
-                var events = await eventHubReceiver.ReceiveAsync(100);
-
-                // If there is data in the batch, process it.
-                if (events == null) continue;
-
-                foreach (EventData eventData in events)
+                try
                 {
-                    if(eventData.SystemProperties.Keys.Contains("iothub-message-source") && (string)eventData.SystemProperties["iothub-message-source"]!="Telemetry")
-                    {
-                        continue;
-                    }
+                    Console.WriteLine("Listening for messages on: " + partition);
+                    // Check for EventData - this methods times out if there is nothing to retrieve.
+                    var events = await eventHubReceiver.ReceiveAsync(100);
 
-                    string data = Encoding.UTF8.GetString(eventData.Body.Array);
+                    // If there is data in the batch, process it.
+                    if (events == null) continue;
 
-                    var token = JToken.Parse(data);
-                    IEnumerable<string> elements = new string [0];
-
-                    if (token is JArray)
+                    foreach (EventData eventData in events)
                     {
-                        var array = token as JArray;
-                        elements = array.Select(x => (x as JValue)?.Value as string);
-                    }
-                    else if (token is JObject)
-                    {
-                        elements=new string[] { data };
-                    }
-
-                    foreach(string element in elements)
-                    {
-                        if (element!=null && !schema.Validate(element).Any())
+                        if (eventData.SystemProperties.Keys.Contains("iothub-message-source") && (string)eventData.SystemProperties["iothub-message-source"] != "Telemetry")
                         {
-                            var key = "";
-                            if (eventData.SystemProperties.Keys.Contains("iothub-connection-device-id") && eventData.SystemProperties["iothub-connection-device-id"] != null)
-                            {
-                                key = (string)eventData.SystemProperties["iothub-connection-device-id"];
-                            }
-
-                            messageQueue.Enqueue(new KeyValuePair<string, string>(key, element));
+                            continue;
                         }
-                    }
 
+                        string data = Encoding.UTF8.GetString(eventData.Body.Array);
+
+                        var token = JToken.Parse(data);
+                        IEnumerable<string> elements = new string[0];
+
+                        if (token is JArray)
+                        {
+                            var array = token as JArray;
+                            elements = array.Select(x => (x as JValue)?.Value as string);
+                        }
+                        else if (token is JObject)
+                        {
+                            elements = new string[] { data };
+                        }
+
+                        foreach (string element in elements)
+                        {
+                            if (element != null && !schema.Validate(element).Any())
+                            {
+                                var key = "";
+                                if (eventData.SystemProperties.Keys.Contains("iothub-connection-device-id") && eventData.SystemProperties["iothub-connection-device-id"] != null)
+                                {
+                                    key = (string)eventData.SystemProperties["iothub-connection-device-id"];
+                                }
+
+                                messageQueue.Enqueue(new KeyValuePair<string, string>(key, element));
+                            }
+                        }
+
+                    }
                 }
+                catch (Exception) { }
             }
         }
 
