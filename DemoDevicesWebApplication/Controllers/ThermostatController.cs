@@ -24,9 +24,9 @@ namespace DemoDevicesWebApplication.Controllers
         [HttpPost]
         public async Task<ActionResult> Uninitialize(string connectionString)
         {
-            var temp = Interlocked.Exchange(ref thermostat, null);
-            if (temp != null)
+            if (thermostat != null)
             {
+                var temp = Interlocked.Exchange(ref thermostat, null);
                 await temp?.Dispose();
             }
             
