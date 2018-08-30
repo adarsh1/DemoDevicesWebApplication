@@ -109,13 +109,14 @@
                         machine: {
                             x: new Queue(50),
                             y: new Queue(50),
-                            z: new Queue(50)
+                            z: new Queue(50),
                         },
                         ambient: {
                             x: new Queue(50),
                             y: new Queue(50),
-                            z: new Queue(50)
-                        }
+                            z: new Queue(50),
+                        },
+                        color: new Queue(50)
                     };
                 }
                 var point = deviceData[data.Key];
@@ -126,6 +127,16 @@
                 point.ambient.x.enqueue(obj.timeCreated);
                 point.ambient.y.enqueue(obj.ambient.temperature);
                 point.ambient.z.enqueue(obj.ambient.humidity);
+
+                if (!obj.hasOwnProperty('anomaly')) {
+                    point.color.enqueue("#2980B9");
+                }
+                else if (obj.anomaly) {
+                    point.color.enqueue("#FF5733");
+                }
+                else {
+                    point.color.enqueue("#148F77");
+                }
 
                 var plotMachineTemperatureData = [];
                 var plotAmbientTemperatureData = [];
@@ -142,6 +153,10 @@
                             name: key,
                             x: current.machine.x.array,
                             y: current.machine.y.array,
+                            marker: {
+                                size: 9,
+                                color: current.color.array
+                            },
                             line: {
                                 color:'#2980B9'
                             }
@@ -155,8 +170,12 @@
                             name: key,
                             x: current.ambient.x.array,
                             y: current.ambient.y.array,
+                            marker: {
+                                size: 9,
+                                color: current.color.array
+                            },
                             line: {
-                                color: '#148F77'
+                                color: '#2A2F2E'
                             }
                         }
                     );
@@ -168,6 +187,10 @@
                             name: key,
                             x: current.machine.x.array,
                             y: current.machine.z.array,
+                            marker: {
+                                size: 9,
+                                color: current.color.array
+                            },
                             line: {
                                 color: '#2980B9'
                             }
@@ -181,8 +204,12 @@
                             name: key,
                             x: current.ambient.x.array,
                             y: current.ambient.z.array,
+                            marker: {
+                                size: 9,
+                                color: current.color.array
+                            },
                             line: {
-                                color: '#148F77'
+                                color: '#2A2F2E'
                             }
                         }
                     );
@@ -224,7 +251,7 @@
 <div class="jumbotron">
     <h2>IoT Edge Telemetry Visualizer</h2>
 </div>
-<div class="container">
+<div class="container-fluid">
     <h2>Enter IotHub message/events Information</h2>
     <div class="row" style="padding-top:0.5em;">
         <div class="col-xs-12">
@@ -246,18 +273,18 @@
     </div>
     <div class="row" style="padding-top:0.5em;">
         <div class="col-xs-6">
-            <div id="machineTemperature" style="width:20vw;height:35vh;"></div>
+            <div id="machineTemperature" style="object-fit: cover;"></div>
         </div>
         <div class="col-xs-6">
-            <div id="machinePressure" style="width:20vw;height:35vh;"></div>
+            <div id="machinePressure" style="object-fit: cover;"></div>
         </div>
     </div>
     <div class="row" style="padding-top:0.5em;">
         <div class="col-xs-6">
-            <div id="ambientTemperature" style="width:20vw;height:35vh;"></div>
+            <div id="ambientTemperature" style="object-fit: cover;"></div>
         </div>
         <div class="col-xs-6">
-            <div id="ambientHumidity" style="width:20vw;height:35vh;"></div>
+            <div id="ambientHumidity" style="object-fit: cover;"></div>
         </div>
     </div>
 </div>

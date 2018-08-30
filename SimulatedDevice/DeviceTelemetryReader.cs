@@ -12,6 +12,7 @@ namespace SimulatedDevice
     using System.Threading;
     using System.Threading.Tasks;
     using Microsoft.Azure.EventHubs;
+    using Newtonsoft.Json.Linq;
     using NJsonSchema;
 
     public class DeviceTelemetryReader : IDisposable
@@ -87,15 +88,31 @@ namespace SimulatedDevice
 
                     string data = Encoding.UTF8.GetString(eventData.Body.Array);
 
-                    if (!schema.Validate(data).Any())
-                    {
-                        var key = "";
-                        if (eventData.SystemProperties.Keys.Contains("iothub-connection-device-id") && eventData.SystemProperties["iothub-connection-device-id"] != null)
-                        {
-                            key = (string)eventData.SystemProperties["iothub-connection-device-id"];
-                        }
+                    var token = JToken.Parse(data);
+                    IEnumerable<string> elements = new string [0];
 
-                        messageQueue.Enqueue(new KeyValuePair<string, string>(key, data));
+                    if (token is JArray)
+                    {
+                        var array = token as JArray;
+                        elements = array.Select(x => (x as JValue)?.Value as string);
+                    }
+                    else if (token is JObject)
+                    {
+                        elements=new string[] { data };
+                    }
+
+                    foreach(string element in elements)
+                    {
+                        if (element!=null && !schema.Validate(element).Any())
+                        {
+                            var key = "";
+                            if (eventData.SystemProperties.Keys.Contains("iothub-connection-device-id") && eventData.SystemProperties["iothub-connection-device-id"] != null)
+                            {
+                                key = (string)eventData.SystemProperties["iothub-connection-device-id"];
+                            }
+
+                            messageQueue.Enqueue(new KeyValuePair<string, string>(key, element));
+                        }
                     }
 
                 }
