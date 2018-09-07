@@ -70,6 +70,11 @@ namespace DemoDevicesWebApplication.Controllers
         [HttpPost]
         public async Task<ActionResult> Initialize(string connectionString, string hubName)
         {
+            if (reader != null)
+            {
+                Uninitialize(connectionString);
+            }
+
             reader = new DeviceTelemetryReader(connectionString, hubName);
             await reader.Start("$Default", temperatureSensorTelemetrySchema);
             return Json(new { success = true });
