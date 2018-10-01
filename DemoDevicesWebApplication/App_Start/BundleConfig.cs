@@ -29,6 +29,9 @@ namespace DemoDevicesWebApplication
 
             bundles.Add(new ScriptBundle("~/bundles/colorMaps").Include(
                       "~/Scripts/colormaps.js"));
+
+            bundles.Add(new ScriptBundle("~/bundles/plotly").Include(
+                      "~/Scripts/plotly-latest.min.js"));
         }
     }
 }

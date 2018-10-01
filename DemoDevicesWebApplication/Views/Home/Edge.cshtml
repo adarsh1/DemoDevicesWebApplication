@@ -1,6 +1,6 @@
 ﻿
 @section scripts {
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    @Scripts.Render("~/bundles/plotly")
     <script>
         function Queue(maxSize) {
             this.array = [];
