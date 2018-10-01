@@ -76,9 +76,9 @@
 
    function getIntermediate(aTemp, col1, col2) {
        var fac = (aTemp - col1.index) / (col2.index - col1.index);
-       var r = (col2.rgb[0] - col1.rgb[0]) * fac + col1.rgb[0];
-       var g = (col2.rgb[1] - col1.rgb[1]) * fac + col1.rgb[1];
-       var b = (col2.rgb[2] - col1.rgb[2]) * fac + col1.rgb[2];
+       var r = Math.round((col2.rgb[0] - col1.rgb[0]) * fac + col1.rgb[0]);
+       var g = Math.round((col2.rgb[1] - col1.rgb[1]) * fac + col1.rgb[1]);
+       var b = Math.round((col2.rgb[2] - col1.rgb[2]) * fac + col1.rgb[2]);
        return [r, g, b];
    }
    function getColorForTemp(temp) {
