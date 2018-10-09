@@ -49,11 +49,18 @@ namespace SimulatedDevice
         public string Status { get; private set; }
 
         CancellationTokenSource cancelationTokenSource;
-        public ConcurrentQueue<string> Messages { get; }
+        public ConcurrentQueue<Tuple<string, MessageType>> Messages { get; }
 
         Task TelemetryTask = null;
         Task UpdateTask = null;
         Task MessagesTask = null;
+
+        public enum MessageType
+        {
+            Informational,
+            Success,
+            Error
+        }
 
         class Statistics
         {
@@ -110,7 +117,7 @@ namespace SimulatedDevice
             DesiredColorPalette = "inferno";
             Firmware = "0.0.0.0";
             _targetTemperature = 19;
-            Messages = new ConcurrentQueue<string>();
+            Messages = new ConcurrentQueue<Tuple<string, MessageType>>();
             TelemetryTask = Task.Run(() => SendTelemetry(cancelationTokenSource.Token));
             UpdateTask = Task.Run(() => UpdateTemperature(cancelationTokenSource.Token));
             MessagesTask = Task.Run(() => RecieveMessages(cancelationTokenSource.Token));
@@ -146,6 +153,7 @@ namespace SimulatedDevice
             }
             catch (Exception e)
             {
+                AlertError(e.Message);
                 stats.LogExceptionsEncountered(e);
             }
 
@@ -171,15 +179,31 @@ namespace SimulatedDevice
                 try
                 {
                     await client.UploadToBlobAsync(fileName, sourceData);
-                    Messages.Enqueue("Device data uploaded successfully");
+                    AlertInfo("Device data uploaded successfully");
                 }
                 catch (Exception e)
                 {
+                    AlertError(e.Message);
                     stats.LogExceptionsEncountered(e);
                     throw;
                 }
             }
 
+        }
+
+        private void AlertInfo(string msg)
+        {
+            Messages.Enqueue(new Tuple<string,MessageType>(msg, MessageType.Informational));
+        }
+
+        private void AlertError(string msg)
+        {
+            Messages.Enqueue(new Tuple<string, MessageType>(msg, MessageType.Error));
+        }
+
+        private void AlertSuccess(string msg)
+        {
+            Messages.Enqueue(new Tuple<string, MessageType>(msg, MessageType.Success));
         }
 
         async Task DesiredPropertyUpdateCallback(TwinCollection desiredProperties, object userContext)
@@ -211,6 +235,7 @@ namespace SimulatedDevice
                                 }
                                 catch (Exception e)
                                 {
+                                    AlertError(e.Message);
                                     stats.LogExceptionsEncountered(e);
                                 }
 
@@ -232,7 +257,7 @@ namespace SimulatedDevice
         async Task<MethodResponse> AirConditioning(MethodRequest methodRequest, object userContext)
         {
             stats.Log($"AirConditioning Critical temperature reached.Cooling Requested");
-            Messages.Enqueue("Critical temperature reached. Cooling Requested");
+            AlertError("Critical temperature reached. Cooling Requested");
             await SetTargetInternal(16);
             return new MethodResponse(200);
         }
@@ -277,6 +302,7 @@ namespace SimulatedDevice
             }
             catch(Exception e)
             {
+                AlertError(e.Message);
                 stats.LogExceptionsEncountered(e);
             }
             stats.Log($"Target Temperature updated to {TargetTemperature}");
@@ -302,6 +328,7 @@ namespace SimulatedDevice
                 }
                 catch (Exception e)
                 {
+                    AlertError(e.Message);
                     stats.LogExceptionsEncountered(e);
                 }
 
@@ -320,13 +347,43 @@ namespace SimulatedDevice
                     if (message != null)
                     {
                         var msg = Encoding.ASCII.GetString(message.GetBytes());
-                        Messages.Enqueue(msg);
-                        await client.CompleteAsync(message);
+                        bool success;
+                        if (msg.StartsWith("COMMAND:"))
+                        {
+                            var command = msg.Replace("COMMAND:","").ToUpper();
+                            switch (command)
+                            {
+                                case "REJECT":
+                                    AlertError("Recieved Command REJECT rejecting message");
+                                    success = false;
+                                    break;
+                                default:
+                                    AlertSuccess("Processed Command " + command);
+                                    success = true;
+                                    break;
+                            }
+                        }
+                        else
+                        {
+                            AlertInfo(msg);
+                            success = true;
+                        }
+
+                        if (success)
+                        {
+                            await client.CompleteAsync(message);
+                        }
+                        else
+                        {
+                            await client.RejectAsync(message);
+                        }
+
                         stats.Log($"Recieved C2D Message {msg}");
                     }
                 }
                 catch (Exception e)
                 {
+                    AlertError(e.Message);
                     stats.LogExceptionsEncountered(e);
                 }
             }

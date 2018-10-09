@@ -97,14 +97,23 @@ namespace DemoDevicesWebApplication.Controllers
         }
 
         [HttpGet]
-        public string Message()
+        public ActionResult Message()
         {
-            string message = null;
+            Tuple<string, Thermostat.MessageType> message = null;
             if (thermostat != null && thermostat.Messages.Count != 0)
             {
                 thermostat.Messages.TryDequeue(out message);
             }
-            return message;
+
+            if(message == null)
+            {
+                return null;
+            }
+
+            return Json(new {
+                Message = message.Item1,
+                Type = message.Item2.ToString()
+            }, JsonRequestBehavior.AllowGet);
         }
     }
 }

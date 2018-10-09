@@ -158,7 +158,24 @@
             setTimeout(alertRefresh, alertRefreshInterval);
             if (!message)
                 return;
-            $(".alertContainer").append("<div class=\"alert alert-info fade in\"><a href=\"#\" class=\"close\" data-dismiss=\"alert\">&times;</a><strong>Note! </strong>" + message + "</div>");
+
+            var alertclass;
+            switch (message.Type) {
+                case "Error":
+                    alertClass = "alert-danger";
+                    break;
+                case "Informational":
+                    alertClass = "alert-info";
+                    break;
+                case "Success":
+                    alertClass = "alert-success";
+                    break;
+                default:
+                    alertClass = "alert-dark";
+                    break;
+            }
+
+            $(".alertContainer").append("<div class=\"alert "+ alertClass +" fade in\"><a href=\"#\" class=\"close\" data-dismiss=\"alert\">&times;</a><strong>Note! </strong>" + message.Message + "</div>");
         }
 
         function statusRefresh() {
