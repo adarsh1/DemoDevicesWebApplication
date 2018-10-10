@@ -102,8 +102,39 @@
                 badge.text(parseInt(badge.text())+1);
             }
 
+            function fileRefresh() {
+   $.ajax({
+       type: "Get",
+       data: { "count": 20},
+       url: '@Url.Action("FileNotification", "Service")',
+       success: processFiles,
+       error: function (xhr, ajaxOptions, thrownError) {
+           setTimeout(fileRefresh, fileReadInterval);
+           alert(xhr.status);
+           alert(thrownError);
+       }
+       });
+            }
+
+   function processFiles(data) {
+       setTimeout(fileRefresh, fileReadInterval);
+       if (!data)
+           return;
+       data.forEach(processFile);
+            }
+
+            function processFile(data) {
+                id = "file" + data.Device + data.BlobName;
+
+                    $(".list-group#fileGroup").first().append(
+                        "<li class=\"list-group-item list-group-item-info\" id=\"" + id + "\">" + data.Device + "  Name: " + data.BlobName + "  Size: " + data.BlobSize +" </li>"
+                    );
+            }
+
             var messageReadInterval = 1000;
+            var fileReadInterval = 1000;
             messageRefresh();
+            fileRefresh();
 
 
         });
@@ -119,61 +150,73 @@
         <div class="col-12">
             <h2>Enter IotHub service information</h2>
         </div>
-        </div>
-        <div class="row" style="padding-top:0.5em;">
-            <div class="col-6">
-                <div class="input-group">
-                    <input type="text" id="connectionString" class="form-control" placeholder="Iothub service connection String" aria-label="Iothub service connection Stringg" aria-describedby="basic-addon2">
-                    <div class="input-group-append">
-                            <button id="startButton" class="btn btn-outline-success" type="button">Initialize</button>
-                            <button id="stopButton" class="btn btn-outline-danger" type="button">Uninitialize</button>
-                        </div>
-                 </div>
-            </div>
-            <div class="col-6">
-                <div class="input-group">
-                    <div class="input-group-prepend">
-                        <span class="input-group-text">Transport Type:</span>
-                    </div>
-                    <select id="transportType" class="form-control">
-                        <option selected="selected" value="0">Amqp</option>
-                        <option value="1">Amqp_WebSocket_Only</option>
-                    </select>
+    </div>
+    <div class="row" style="padding-top:0.5em;">
+        <div class="col-6">
+            <div class="input-group">
+                <input type="text" id="connectionString" class="form-control" placeholder="Iothub service connection String" aria-label="Iothub service connection Stringg" aria-describedby="basic-addon2">
+                <div class="input-group-append">
+                    <button id="startButton" class="btn btn-outline-success" type="button">Initialize</button>
+                    <button id="stopButton" class="btn btn-outline-danger" type="button">Uninitialize</button>
                 </div>
             </div>
         </div>
-        <div class="row" style="padding-top:0.5em;">
-            <div class="col">
-                <div class="card">
-                    <div class="card-header  bg-secondary text-white">
-                        <h3 class="card-title">Send Message</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col">
-                                <div class="input-group">
-                                    <input type="text" id="hubMessage" class="form-control" placeholder="Message To send to the hub" aria-label="Message To send to the hub" aria-describedby="basic-addon2">
-                                    <input type="text" id="deviceId" class="form-control" placeholder="Device ID" aria-label="Device ID" aria-describedby="basic-addon2">
-                                    <div class="input-group-append">
-                                        <button id="messageSendButton" class="btn btn-outline-primary" type="button">Send</button>
-                                        </div>
-                                    </div>
+        <div class="col-6">
+            <div class="input-group">
+                <div class="input-group-prepend">
+                    <span class="input-group-text">Transport Type:</span>
+                </div>
+                <select id="transportType" class="form-control">
+                    <option selected="selected" value="0">Amqp</option>
+                    <option value="1">Amqp_WebSocket_Only</option>
+                </select>
+            </div>
+        </div>
+    </div>
+    <div class="row" style="padding-top:0.5em;">
+        <div class="col">
+            <div class="card">
+                <div class="card-header  bg-secondary text-white">
+                    <h3 class="card-title">Send Message</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col">
+                            <div class="input-group">
+                                <input type="text" id="hubMessage" class="form-control" placeholder="Message To send to the hub" aria-label="Message To send to the hub" aria-describedby="basic-addon2">
+                                <input type="text" id="deviceId" class="form-control" placeholder="Device ID" aria-label="Device ID" aria-describedby="basic-addon2">
+                                <div class="input-group-append">
+                                    <button id="messageSendButton" class="btn btn-outline-primary" type="button">Send</button>
                                 </div>
                             </div>
-                            </div>
-                </div>
-            </div>
-        </div>
-        <div class="row" style="padding-top:0.5em;">
-            <div class="col">
-                <div class="card">
-                    <div class="card-header  bg-secondary text-white">
-                        <h3 class="panel-title">Feedback Records</h3>
-                    </div>
-                    <div class="card-body">
-                        <ul class="list-group" id="feedbackGroup"></ul>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
+    <div class="row" style="padding-top:0.5em;">
+        <div class="col">
+            <div class="card">
+                <div class="card-header  bg-secondary text-white">
+                    <h3 class="panel-title">Feedback Records</h3>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group" id="feedbackGroup"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="row" style="padding-top:0.5em;">
+        <div class="col">
+            <div class="card">
+                <div class="card-header  bg-secondary text-white">
+                    <h3 class="panel-title">File Notifications</h3>
+                </div>
+                <div class="card-body">
+                    <ul class="list-group" id="fileGroup"></ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -69,5 +69,31 @@ namespace DemoDevicesWebApplication.Controllers
                 Status = x.StatusCode.ToString(),
             }), JsonRequestBehavior.AllowGet);
         }
+
+        [HttpGet]
+        public ActionResult FileNotification()
+        {
+            int batchSize = 50;
+            int count = 0;
+            List<FileNotification> notifications = new List<FileNotification>();
+            if (service != null && service.FileNotification.Count != 0)
+            {
+                while (service.FileNotification.TryDequeue(out FileNotification notification) && notification != null && ++count <= batchSize)
+                {
+                    notifications.Add(notification);
+                }
+            }
+
+            if (!notifications.Any())
+            {
+                return null;
+            }
+
+            return Json(notifications.Select(x => new {
+                Device = x.DeviceId,
+                BlobName = x.BlobName,
+                BlobSize = x.BlobSizeInBytes,
+            }), JsonRequestBehavior.AllowGet);
+        }
     }
 }

@@ -15,6 +15,7 @@ namespace ServiceSimulation
         private CancellationTokenSource cancelationTokenSource;
         private SemaphoreSlim serviceSemaphore;
         public ConcurrentQueue<FeedbackRecord> Feedback { get; }
+        public ConcurrentQueue<FileNotification> FileNotification { get; }
 
         public SimulatedService(string connectionString, int transportTypeInt)
         {
@@ -24,7 +25,9 @@ namespace ServiceSimulation
             this.cancelationTokenSource = new CancellationTokenSource();
             this.serviceSemaphore = new SemaphoreSlim(1, 1);
             Feedback = new ConcurrentQueue<FeedbackRecord>();
+            FileNotification = new ConcurrentQueue<FileNotification>();
             Task.Run(() => ReceiveFeedback(this.cancelationTokenSource.Token));
+            Task.Run(() => ReceiveFileNotification(this.cancelationTokenSource.Token));
         }
 
         public void Dispose()
@@ -43,16 +46,29 @@ namespace ServiceSimulation
 
                 if (feedbackBatch != null)
                 {
-                    Console.WriteLine("UserId: "+ feedbackBatch.UserId);
-                    Console.WriteLine();
                     foreach (var record in feedbackBatch.Records)
                     {
                         Feedback.Enqueue(record);
-                        Console.WriteLine($"Description: {record.Description}, DeviceGenerationId : {record.DeviceGenerationId}, DeviceId : {record.DeviceId}, EnqueuedTimeUtc : {record.EnqueuedTimeUtc},  OriginalMessageId : {record.OriginalMessageId}, StatusCode : {record.StatusCode}");
                     }
-                    Console.WriteLine();
 
                     await feedbackReceiver.CompleteAsync(feedbackBatch);
+                }
+            }
+        }
+
+        public async Task ReceiveFileNotification(CancellationToken cancellationToken)
+        {
+            var fileNotificationReceiver = this.client.GetFileNotificationReceiver();
+
+            while (!cancellationToken.IsCancellationRequested)
+            {
+                var notification = await fileNotificationReceiver.ReceiveAsync();
+
+                if (notification != null)
+                {
+                    FileNotification.Enqueue(notification);
+
+                    await fileNotificationReceiver.CompleteAsync(notification);
                 }
             }
         }
