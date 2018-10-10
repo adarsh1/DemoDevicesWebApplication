@@ -51,18 +51,18 @@
 <div class="container">
     <h2>Create a Device</h2>
     <div class="row" style="padding-top:0.5em;">
-        <div class="col-xs-12">
-            <div class="panel panel-default">
-                <div class="panel-heading">
+        <div class="col">
+            <div class="card">
+                <div class="card-header">
                     <div class="input-group">
                         <input type="text" id="connectionString" class="form-control" placeholder="Hub connection String" aria-label="Hub connection String" aria-describedby="basic-addon2">
                         <input type="text" id="deviceId" class="form-control" placeholder="Device Id" aria-label="Device Id" aria-describedby="basic-addon2">
-                        <span class="input-group-btn">
+                        <div class="input-group-append">
                             <button id="deviceButton" class="btn btn-default" type="button">CreateDevice</button>
-                        </span>
+                        </div>
                     </div>
                 </div>
-                <div class="panel-body">
+                <div class="card-body">
                     <p id="deviceConnection">
                     </p>
                     <div class="input-group">

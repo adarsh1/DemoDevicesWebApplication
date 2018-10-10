@@ -175,7 +175,7 @@
                     break;
             }
 
-            $(".alertContainer").append("<div class=\"alert "+ alertClass +" fade in\"><a href=\"#\" class=\"close\" data-dismiss=\"alert\">&times;</a><strong>Note! </strong>" + message.Message + "</div>");
+            $(".alertContainer").append("<div class=\"alert " + alertClass +" alert-dismissible\"><button class=\"close\" data-dismiss=\"alert\">&times;</button><strong>Note! </strong>" + message.Message + "</div>");
         }
 
         function statusRefresh() {
@@ -295,36 +295,34 @@
 
     <div class="container-fluid">
         <div class="row" style="padding-top:0.5em;">
-            <div class="col-xs-6">
+            <div class="col-6">
                 <div class="input-group">
                     <input type="text" id="connectionString" class="form-control" placeholder="Device connection String" aria-label="Device connection String" aria-describedby="basic-addon2">
-                    <span class="input-group-btn">
+                    <span class="input-group-append">
                         <button id="initButton" class="btn btn-default" type="button">Initialize</button>
-                    </span>
-                    <span class="input-group-btn">
                         <button id="uninitButton" class="btn btn-default" type="button">Un-Initialize</button>
                     </span>
                 </div>
             </div>
-            <div class="col-xs-6">
+            <div class="col-6">
                 <div class="input-group">
-                    <span class="input-group-btn">
-                        Transport Type:
-                        <select id="transportType" class="form-control">
-                            <option selected="selected" value="0">Amqp</option>
-                            <option value="1">Http1</option>
-                            <option value="2">Amqp_WebSocket_Only</option>
-                            <option value="3">Amqp_Tcp_Only</option>
-                            <option value="4">Mqtt</option>
-                            <option value="5">Mqtt_WebSocket_Only</option>
-                            <option value="6">Mqtt_Tcp_Only</option>
-                        </select>
-                    </span>
+                    <div class="input-group-prepend">
+                        <span class="input-group-text">Transport Type:</span>
+                    </div>
+                    <select id="transportType" class="form-control">
+                        <option selected="selected" value="0">Amqp</option>
+                        <option value="1">Http1</option>
+                        <option value="2">Amqp_WebSocket_Only</option>
+                        <option value="3">Amqp_Tcp_Only</option>
+                        <option value="4">Mqtt</option>
+                        <option value="5">Mqtt_WebSocket_Only</option>
+                        <option value="6">Mqtt_Tcp_Only</option>
+                    </select>
                 </div>
             </div>
         </div>
         <div class="row">
-            <div class="col-md-6">
+            <div class="col-6">
                 <h2>Status : <span id="status">Not Connected</span></h2>
             </div>
         </div>
@@ -358,12 +356,12 @@
             </div>
         </div>
         <div class="row">
-            <div class="col-md-6">
+            <div class="col-6">
                 <h2>Firmware : <span id="firmware">0.0.0.0</span></h2>
             </div>
         </div>
         <div class="row" style="padding-top:0.5em;">
-            <div class="col-xs-6">
+            <div class="col-6">
                 <div class="input-group">
                     <span class="input-group-btn">
                         <button id="statsButton" class="btn btn-default" type="button">Upload Device Logs</button>

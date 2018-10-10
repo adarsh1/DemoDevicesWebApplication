@@ -1,0 +1,179 @@
+﻿
+@section scripts {
+    <script>
+
+        $(document).ready(function () {
+
+             $("#startButton").mousedown(function () {
+            $.ajax({
+                type: "POST",
+                data: { "connectionString": $("#connectionString").val(), "transportType": parseInt($("#transportType").val()) },
+                url: '@Url.Action("Initialize", "Service")',
+                success: displayDevice,
+       error: function(xhr, ajaxOptions, thrownError) {
+           alert(xhr.status);
+           alert(thrownError);
+          }
+        });
+            });
+
+            $("#messageSendButton").mousedown(function () {
+            $.ajax({
+                type: "POST",
+                data: { "message": $("#hubMessage").val(), "deviceId": $("#deviceId").val() },
+                url: '@Url.Action("SendMessage", "Service")',
+                success: displayDevice,
+       error: function(xhr, ajaxOptions, thrownError) {
+           alert(xhr.status);
+           alert(thrownError);
+          }
+        });
+            });
+
+        function displayDevice() {
+            }
+
+            $("#stopButton").mousedown(uninitialize);
+
+        function uninitialize() {
+             $.ajax({
+                type: "POST",
+                url: '@Url.Action("Uninitialize", "Service")',
+                success: reset,
+                 error: alertError
+   });
+            }
+                    window.addEventListener("beforeunload", function (event) {
+                        uninitialize();
+            });
+
+            function alertError(xhr, ajaxOptions, thrownError) {
+                alert(xhr.status);
+                alert(thrownError);
+            }
+
+            function reset() {
+            }
+
+               function messageRefresh() {
+   $.ajax({
+       type: "Get",
+       data: { "count": 20},
+       url: '@Url.Action("Feedback", "Service")',
+       success: processMessages,
+       error: function (xhr, ajaxOptions, thrownError) {
+           setTimeout(messageRefresh, messageReadInterval);
+           alert(xhr.status);
+           alert(thrownError);
+       }
+       });
+            }
+
+   function processMessages(data) {
+       setTimeout(messageRefresh, messageReadInterval);
+       if (!data)
+           return;
+       data.forEach(processMessage);
+            }
+
+            function processMessage(data) {
+                id = "feedback" + data.Device + data.Status;
+                if ($(".list-group-item#" + id).length === 0) {
+                    var itemClass;
+                    switch (data.Status) {
+                        case "Expired":
+                        case "DeliveryCountExceeded":
+                        case "Rejected":
+                            itemClass = "list-group-item-danger";
+                            break;
+                        case "Success":
+                            itemClass = "list-group-item-success";
+                            break;
+                        default:
+                            itemClass = "list-group-item-info";
+                            break;
+                    }
+
+                    $(".list-group#feedbackGroup").first().append(
+                        "<li class=\"list-group-item "+ itemClass +"\" id=\""+id+"\">"+ data.Device +"  "+ data.Status+"<span class=\"badge badge-primary badge-pill\">0</span> </li>"
+                    );
+                }
+                var badge = $(".list-group-item#" + id).find(".badge").first();
+                badge.text(parseInt(badge.text())+1);
+            }
+
+            var messageReadInterval = 1000;
+            messageRefresh();
+
+
+        });
+
+    </script>
+}
+
+<div class="jumbotron">
+    <h2>IoT Edge Telemetry Visualizer</h2>
+</div>
+<div class="container-fluid">
+    <div class="row" style="padding-top:0.5em;">
+        <div class="col-12">
+            <h2>Enter IotHub service information</h2>
+        </div>
+        </div>
+        <div class="row" style="padding-top:0.5em;">
+            <div class="col-6">
+                <div class="input-group">
+                    <input type="text" id="connectionString" class="form-control" placeholder="Iothub service connection String" aria-label="Iothub service connection Stringg" aria-describedby="basic-addon2">
+                    <div class="input-group-append">
+                            <button id="startButton" class="btn btn-outline-success" type="button">Initialize</button>
+                            <button id="stopButton" class="btn btn-outline-danger" type="button">Uninitialize</button>
+                        </div>
+                 </div>
+            </div>
+            <div class="col-6">
+                <div class="input-group">
+                    <div class="input-group-prepend">
+                        <span class="input-group-text">Transport Type:</span>
+                    </div>
+                    <select id="transportType" class="form-control">
+                        <option selected="selected" value="0">Amqp</option>
+                        <option value="1">Amqp_WebSocket_Only</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+        <div class="row" style="padding-top:0.5em;">
+            <div class="col">
+                <div class="card">
+                    <div class="card-header  bg-secondary text-white">
+                        <h3 class="card-title">Send Message</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col">
+                                <div class="input-group">
+                                    <input type="text" id="hubMessage" class="form-control" placeholder="Message To send to the hub" aria-label="Message To send to the hub" aria-describedby="basic-addon2">
+                                    <input type="text" id="deviceId" class="form-control" placeholder="Device ID" aria-label="Device ID" aria-describedby="basic-addon2">
+                                    <div class="input-group-append">
+                                        <button id="messageSendButton" class="btn btn-outline-primary" type="button">Send</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            </div>
+                </div>
+            </div>
+        </div>
+        <div class="row" style="padding-top:0.5em;">
+            <div class="col">
+                <div class="card">
+                    <div class="card-header  bg-secondary text-white">
+                        <h3 class="panel-title">Feedback Records</h3>
+                    </div>
+                    <div class="card-body">
+                        <ul class="list-group" id="feedbackGroup"></ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>

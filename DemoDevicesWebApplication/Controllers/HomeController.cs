@@ -30,5 +30,13 @@ namespace DemoDevicesWebApplication.Controllers
 
             return View();
         }
+
+        public ActionResult Service()
+        {
+            ViewBag.Title = "Service Simulation";
+            ViewBag.Message = "Service.";
+
+            return View();
+        }
     }
 }
