@@ -21,7 +21,7 @@ namespace OTAUpdateAgent
         Idle,
         Busy
     }
-    public class UpdateAgent:IDisposable
+    public class UpdateAgent
     {
         IUpdateableDevice managedDevice;
         UpdateStatus Status { get; set; }
