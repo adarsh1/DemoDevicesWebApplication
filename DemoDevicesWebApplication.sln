@@ -9,6 +9,10 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SimulatedDevice", "Simulate
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ServiceSimulation", "ServiceSimulation\ServiceSimulation.csproj", "{67BD0461-BED7-4011-9C77-19A3AC83A1C6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Common", "Common\Common.csproj", "{F6B1C7EE-799D-453D-B9B5-D30EA5552131}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OTAUpdateAgent", "OTAUpdateAgent\OTAUpdateAgent.csproj", "{2C74BBCC-2B8C-445A-884D-CBE4CDB75518}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +31,14 @@ Global
 		{67BD0461-BED7-4011-9C77-19A3AC83A1C6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{67BD0461-BED7-4011-9C77-19A3AC83A1C6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{67BD0461-BED7-4011-9C77-19A3AC83A1C6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F6B1C7EE-799D-453D-B9B5-D30EA5552131}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F6B1C7EE-799D-453D-B9B5-D30EA5552131}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F6B1C7EE-799D-453D-B9B5-D30EA5552131}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F6B1C7EE-799D-453D-B9B5-D30EA5552131}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2C74BBCC-2B8C-445A-884D-CBE4CDB75518}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2C74BBCC-2B8C-445A-884D-CBE4CDB75518}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2C74BBCC-2B8C-445A-884D-CBE4CDB75518}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2C74BBCC-2B8C-445A-884D-CBE4CDB75518}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

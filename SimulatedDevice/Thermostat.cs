@@ -1,17 +1,19 @@
-﻿using Microsoft.Azure.Devices.Client;
+﻿using Common;
+using Microsoft.Azure.Devices.Client;
 using Microsoft.Azure.Devices.Shared;
 using Newtonsoft.Json;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace SimulatedDevice
 {
-    public class Thermostat
+    public class Thermostat:IUpdateableDevice
     {
         const string targetTempProperty = "targetTempProperty";
         const string typeProperty = "Type";
@@ -27,7 +29,6 @@ namespace SimulatedDevice
         private const string MessageTemplate = "{\"temperature\":${temperature}}";
         private const string SupportedMethodsProperty = "SupportedMethods";
         private const string TelemetryProperty = "Telemetry";
-        private string deviceConnectionString;
 
         private DeviceClient client;
         private string DeviceId = "";
@@ -102,14 +103,34 @@ namespace SimulatedDevice
             public string Json => JsonConvert.SerializeObject(this, Formatting.Indented);
         }
 
-        public Thermostat(string connectionString, int transportTypeInt)
+        public Thermostat(string connectionString, int transportTypeInt) : this(transportTypeInt)
         {
-            stats = new Statistics();
-            deviceConnectionString = connectionString;
-            this.transportType = (TransportType)transportTypeInt;
-            client = DeviceClient.CreateFromConnectionString(deviceConnectionString, this.transportType);
-            var connectionStringBuilder = IotHubConnectionStringBuilder.Create(deviceConnectionString);
+            client = DeviceClient.CreateFromConnectionString(connectionString, this.transportType);
+            var connectionStringBuilder = IotHubConnectionStringBuilder.Create(connectionString);
             DeviceId = connectionStringBuilder.DeviceId;
+
+            Setup();
+        }
+
+        public bool CanUpdate()
+        {
+            return true;
+        }
+
+        public Thermostat(string deviceId, string certPath, string hostname, int transportTypeInt) : this(transportTypeInt)
+        {
+            X509Certificate2 deviceCert = new X509Certificate2(CertificateHelper.GetPFXFromCertificate(CertificateHelper.GetCertificateFromSubjectName(certPath,false),"1111"), "1111", X509KeyStorageFlags.Exportable);
+            DeviceId = deviceId;
+            var authMethod = new DeviceAuthenticationWithX509Certificate(deviceId, deviceCert);
+            client = DeviceClient.Create(hostname, authMethod);
+
+            Setup();
+        }
+
+        private Thermostat(int transportTypeInt)
+        {
+            this.transportType = (TransportType)transportTypeInt;
+            stats = new Statistics();
             cancelationTokenSource = new CancellationTokenSource();
             deviceSemaphore = new SemaphoreSlim(1, 1);
             Temperature = 19;
@@ -118,6 +139,10 @@ namespace SimulatedDevice
             Firmware = "0.0.0.0";
             _targetTemperature = 19;
             Messages = new ConcurrentQueue<Tuple<string, MessageType>>();
+        }
+
+        private void Setup()
+        {
             TelemetryTask = Task.Run(() => SendTelemetry(cancelationTokenSource.Token));
             UpdateTask = Task.Run(() => UpdateTemperature(cancelationTokenSource.Token));
             MessagesTask = Task.Run(() => RecieveMessages(cancelationTokenSource.Token));
@@ -216,42 +241,47 @@ namespace SimulatedDevice
                         DesiredColorPalette = desiredProperties[colorPaletteProperty];
                         stats.Log($"Changing Pallete to {DesiredColorPalette}");
                         break;
-                    case desiredFirmwareProperty:
+                    /*case desiredFirmwareProperty:
                         if(!Firmware.Equals(desiredProperties[desiredFirmwareProperty]))
                         {
-                            await deviceSemaphore.WaitAsync();
-                            try
-                            {
-                                var tempStatus = Status;
-                                Status = "Updating Firmware...";
-                                await Task.Delay(5000);
-                                Firmware = desiredProperties[desiredFirmwareProperty];
-                                Status = tempStatus;
-                                TwinCollection properties = new TwinCollection();
-                                properties[desiredFirmwareProperty] = Firmware;
-                                try
-                                {
-                                    await client.UpdateReportedPropertiesAsync(properties);
-                                }
-                                catch (Exception e)
-                                {
-                                    AlertError(e.Message);
-                                    stats.LogExceptionsEncountered(e);
-                                }
-
-                                stats.Log($"Firmware Updated to {Firmware}");
-                            }
-                            finally
-                            {
-                                deviceSemaphore.Release();
-                            }
+                            await UpdateFirmware(desiredProperties[desiredFirmwareProperty]);
                         }
-                        break;
+                        break;*/
                     default: Console.WriteLine(property.ToString());
                         break;
                 }
             }
 
+        }
+
+        public async Task UpdateFirmware(string newFirmware)
+        {
+            await deviceSemaphore.WaitAsync();
+            try
+            {
+                var tempStatus = Status;
+                Status = "Updating Firmware...";
+                await Task.Delay(5000);
+                Firmware = newFirmware;
+                Status = tempStatus;
+                TwinCollection properties = new TwinCollection();
+                properties[firmwareProperty] = Firmware;
+                try
+                {
+                    await client.UpdateReportedPropertiesAsync(properties);
+                }
+                catch (Exception e)
+                {
+                    AlertError(e.Message);
+                    stats.LogExceptionsEncountered(e);
+                }
+
+                stats.Log($"Firmware Updated to {Firmware}");
+            }
+            finally
+            {
+                deviceSemaphore.Release();
+            }
         }
 
         async Task<MethodResponse> AirConditioning(MethodRequest methodRequest, object userContext)

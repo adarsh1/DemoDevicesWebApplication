@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Web;
 using System.Web.Mvc;
+using OTAUpdateAgent;
 using SimulatedDevice;
 
 namespace DemoDevicesWebApplication.Controllers
@@ -12,13 +13,39 @@ namespace DemoDevicesWebApplication.Controllers
     public class ThermostatController : Controller
     {
         static Thermostat thermostat = null;
+        static UpdateAgent updateAgent = null;
 
         [HttpPost]
         public async Task<ActionResult> Initialize(string connectionString, int transportType)
         {
+            await Uninitialize(connectionString);
             thermostat = new Thermostat(connectionString, transportType);
             await thermostat.Initialize();
             return Json(new { success = true });
+        }
+
+        [HttpPost]
+        public async Task<ActionResult> InitializeWithUpdate(string connectionString,string updateAgentConnectionString, int transportType)
+        {
+            await Initialize(connectionString, transportType);
+            updateAgent = new UpdateAgent(updateAgentConnectionString, thermostat);
+            return Json(new { success = true });
+        }
+
+        [HttpPost]
+        public async Task<ActionResult> InitializeX509(string deviceId, string hostName, string certPath, int transportType)
+        {
+            try
+            {
+                await Uninitialize(deviceId);
+                thermostat = new Thermostat(deviceId, certPath, hostName, transportType);
+                await thermostat.Initialize();
+                return Json(new { success = true });
+            }
+            catch(Exception ex)
+            {
+                return Json(new { success = false, error = ex.ToString() , path = System.Web.HttpRuntime.AppDomainAppPath });
+            }
         }
 
         [HttpPost]
@@ -28,6 +55,9 @@ namespace DemoDevicesWebApplication.Controllers
             {
                 var temp = Interlocked.Exchange(ref thermostat, null);
                 await temp?.Dispose();
+
+                var temp2 = Interlocked.Exchange(ref updateAgent, null);
+                await temp2?.Dispose();
             }
             
             return Json(new { success = true });

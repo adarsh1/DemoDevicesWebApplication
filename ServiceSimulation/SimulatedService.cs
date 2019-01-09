@@ -14,6 +14,7 @@ namespace ServiceSimulation
         private TransportType transportType;
         private CancellationTokenSource cancelationTokenSource;
         private SemaphoreSlim serviceSemaphore;
+        private FeedbackReceiver<FeedbackBatch> feedbackReceiver;
         public ConcurrentQueue<FeedbackRecord> Feedback { get; }
         public ConcurrentQueue<FileNotification> FileNotification { get; }
 
@@ -38,7 +39,7 @@ namespace ServiceSimulation
 
         public async Task ReceiveFeedback( CancellationToken cancellationToken)
         {
-            var feedbackReceiver = this.client.GetFeedbackReceiver();
+            feedbackReceiver = this.client.GetFeedbackReceiver();
 
             while (!cancellationToken.IsCancellationRequested)
             {

@@ -8,13 +8,25 @@
     @Scripts.Render("~/bundles/colorMaps")
     <script>
         $("#initButton").mousedown(function () {
-            $.ajax({
+            if ($("#x509path").val()) {
+               $.ajax({
+                type: "POST",
+                   data: { "deviceId": $("#connectionString").val(), "hostName": $("#hostName").val(), "certPath": $("#x509path").val(), "transportType": parseInt($("#transportType").val()) },
+                url: '@Url.Action("InitializeX509", "Thermostat")',
+                success: reset,
+                error: alertError
+                });
+            }
+            else {
+                $.ajax({
                 type: "POST",
                 data: { "connectionString": $("#connectionString").val(), "transportType": parseInt($("#transportType").val()) },
                 url: '@Url.Action("Initialize", "Thermostat")',
                 success: reset,
                 error: alertError
-   });
+                });
+            }
+
         });
 
         $("#uninitButton").mousedown(uninitialize);
@@ -295,16 +307,18 @@
 
     <div class="container-fluid">
         <div class="row" style="padding-top:0.5em;">
-            <div class="col-6">
+            <div class="col-9">
                 <div class="input-group">
-                    <input type="text" id="connectionString" class="form-control" placeholder="Device connection String" aria-label="Device connection String" aria-describedby="basic-addon2">
+                    <input type="text" id="connectionString" class="form-control" placeholder="Device connection String / Device ID" aria-label="Device connection String" aria-describedby="basic-addon2">
+                    <input type="text" id="hostName" class="form-control" placeholder="IotHub HostName" aria-label="IotHub HostName" aria-describedby="basic-addon2">
+                    <input type="text" id="x509path" class="form-control" placeholder="pfxx Cert Path" aria-label="SubjectName of X509 cert" aria-describedby="basic-addon2">
                     <span class="input-group-append">
                         <button id="initButton" class="btn btn-default" type="button">Initialize</button>
                         <button id="uninitButton" class="btn btn-default" type="button">Un-Initialize</button>
                     </span>
                 </div>
             </div>
-            <div class="col-6">
+            <div class="col-3">
                 <div class="input-group">
                     <div class="input-group-prepend">
                         <span class="input-group-text">Transport Type:</span>

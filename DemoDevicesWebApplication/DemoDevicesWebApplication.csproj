@@ -300,7 +300,9 @@
     <Content Include="Scripts\umd\popper-utils.min.js" />
     <Content Include="Scripts\umd\popper.js" />
     <Content Include="Scripts\umd\popper.min.js" />
-    <Content Include="Web.config" />
+    <Content Include="Web.config">
+      <SubType>Designer</SubType>
+    </Content>
     <Content Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </Content>
@@ -340,6 +342,14 @@
     <Content Include="Scripts\jquery-3.0.0.min.map" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\Common\Common.csproj">
+      <Project>{F6B1C7EE-799D-453D-B9B5-D30EA5552131}</Project>
+      <Name>Common</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\OTAUpdateAgent\OTAUpdateAgent.csproj">
+      <Project>{2c74bbcc-2b8c-445a-884d-cbe4cdb75518}</Project>
+      <Name>OTAUpdateAgent</Name>
+    </ProjectReference>
     <ProjectReference Include="..\ServiceSimulation\ServiceSimulation.csproj">
       <Project>{67bd0461-bed7-4011-9c77-19a3ac83a1c6}</Project>
       <Name>ServiceSimulation</Name>
