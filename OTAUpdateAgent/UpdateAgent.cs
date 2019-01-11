@@ -52,6 +52,7 @@ namespace OTAUpdateAgent
             try
             {
                 await client.UpdateReportedPropertiesAsync(properties);
+                await SetupMethodCallBacks();
             }
             catch (Exception e)
             {
@@ -72,7 +73,7 @@ namespace OTAUpdateAgent
         {
             Status = newStatus;
             TwinCollection properties = new TwinCollection();
-            properties[UpdateStatusProperty] = Status;
+            properties[UpdateStatusProperty] = Status.ToString();
             try
             {
                 await client.UpdateReportedPropertiesAsync(properties);
