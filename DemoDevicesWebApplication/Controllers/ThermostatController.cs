@@ -29,6 +29,7 @@ namespace DemoDevicesWebApplication.Controllers
         {
             await Initialize(connectionString, transportType);
             updateAgent = new UpdateAgent(updateAgentConnectionString, thermostat);
+            await updateAgent.Initialize();
             return Json(new { success = true });
         }
 
@@ -55,9 +56,11 @@ namespace DemoDevicesWebApplication.Controllers
             {
                 var temp = Interlocked.Exchange(ref thermostat, null);
                 await temp?.Dispose();
-
-                var temp2 = Interlocked.Exchange(ref updateAgent, null);
-                await temp2?.Dispose();
+                if (updateAgent != null)
+                {
+                    var temp2 = Interlocked.Exchange(ref updateAgent, null);
+                    await temp2?.Dispose();
+                }
             }
             
             return Json(new { success = true });

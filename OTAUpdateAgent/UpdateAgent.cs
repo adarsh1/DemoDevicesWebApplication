@@ -48,7 +48,7 @@ namespace OTAUpdateAgent
             var twin = await client.GetTwinAsync();
             TwinCollection properties = new TwinCollection();
             properties[SupportedMethodsProperty] = nameof(PrepareForUpdate) + "," + nameof(DownloadUpdate) + "," + nameof(InstallUpdate) + "," + nameof(Rollback) + "," + nameof(CanUpdate) + "," + nameof(Reboot);
-            properties[UpdateStatusProperty] = Status;
+            properties[UpdateStatusProperty] = Status.ToString();
             try
             {
                 await client.UpdateReportedPropertiesAsync(properties);
