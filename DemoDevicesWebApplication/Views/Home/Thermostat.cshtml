@@ -9,32 +9,33 @@
 <script>
         $("#initButton").mousedown(function () {
             if ($("#x509path").val()) {
-               $.ajax({
-                type: "POST",
-                   data: { "deviceId": $("#connectionString").val(), "hostName": $("#hostName").val(), "certPath": $("#x509path").val(), "transportType": parseInt($("#transportType").val()) },
-                url: '@Url.Action("InitializeX509", "Thermostat")',
-                success: reset,
-                error: alertError
+                $.ajax({
+                    type: "POST",
+                    data: { "deviceId": $("#connectionString").val(), "hostName": $("#hostName").val(), "certPath": $("#x509path").val(), "transportType": parseInt($("#transportType").val()) },
+                    url: '@Url.Action("InitializeX509", "Thermostat")',
+                    success: reset,
+                    error: alertError
                 });
             }
-            else if ($("#updateDeviceConnectionString").val()) {
+            else {//if ($("#updateDeviceConnectionString").val()) { $("#updateDeviceConnectionString").val()
                 $.ajax({
                 type: "POST",
-                data: { "connectionString": $("#connectionString").val(), "updateAgentConnectionString": $("#updateDeviceConnectionString").val(),  "transportType": parseInt($("#transportType").val()) },
+                    data: {
+                        "connectionString": $("#connectionString").val(), "updateAgentConnectionString": "HostName=filipst-iothub.azure-devices.net;DeviceId=raspberrypi;SharedAccessKey=7hAF7XWlReFzdozq4fJLcpYGlq+DB40iX3fyt+dtM1Y=" ,  "transportType": parseInt($("#transportType").val()) },
                 url: '@Url.Action("InitializeWithUpdate", "Thermostat")',
                 success: reset,
                 error: alertError
                 });
             }
-            else {
-                $.ajax({
-                type: "POST",
-                data: { "connectionString": $("#connectionString").val(), "transportType": parseInt($("#transportType").val()) },
-                url: '@Url.Action("Initialize", "Thermostat")',
-                success: reset,
-                error: alertError
-                });
-            }
+            //else {
+            //    $.ajax({
+           //     type: "POST",
+           //     data: { "connectionString": $("#connectionString").val(), "transportType": parseInt($("#transportType").val()) },
+          //      url: '@Url.Action("Initialize", "Thermostat")',
+          //      success: reset,
+         //       error: alertError
+         //       });
+         //   }
 
         });
 
@@ -319,7 +320,7 @@
             <div class="col-9">
                 <div class="input-group">
                     <input type="text" id="connectionString" class="form-control" placeholder="Device connection String / Device ID" aria-label="Device connection String" aria-describedby="basic-addon2">
-                    <input type="text" id="updateDeviceConnectionString" class="form-control" placeholder="OTA Update Device connection String" aria-label="OTA Update Device connection String" aria-describedby="basic-addon2">
+                    <!--<input type="text" id="updateDeviceConnectionString" class="form-control" placeholder="OTA Update Device connection String" aria-label="OTA Update Device connection String" aria-describedby="basic-addon2">-->
                     <input type="text" id="hostName" class="form-control" placeholder="IotHub HostName" aria-label="IotHub HostName" aria-describedby="basic-addon2">
                     <input type="text" id="x509path" class="form-control" placeholder="pfxx Cert Path" aria-label="SubjectName of X509 cert" aria-describedby="basic-addon2">
                     <span class="input-group-append">

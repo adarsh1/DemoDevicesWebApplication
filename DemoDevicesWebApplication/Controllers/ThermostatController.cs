@@ -13,7 +13,7 @@ namespace DemoDevicesWebApplication.Controllers
     public class ThermostatController : Controller
     {
         static Thermostat thermostat = null;
-        static UpdateAgent updateAgent = null;
+        static PnPUpdateAgent updateAgent = null;
 
         [HttpPost]
         public async Task<ActionResult> Initialize(string connectionString, int transportType)
@@ -28,7 +28,7 @@ namespace DemoDevicesWebApplication.Controllers
         public async Task<ActionResult> InitializeWithUpdate(string connectionString,string updateAgentConnectionString, int transportType)
         {
             await Initialize(connectionString, transportType);
-            updateAgent = new UpdateAgent(updateAgentConnectionString, thermostat);
+            updateAgent = new PnPUpdateAgent(updateAgentConnectionString, thermostat);
             await updateAgent.Initialize();
             return Json(new { success = true });
         }

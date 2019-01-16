@@ -12,5 +12,7 @@ namespace Common
         string Firmware {get;}
         bool CanUpdate();
         Task UpdateFirmware(string newFirmware);
+
+        void UpdateStatus(string newStatus);
     }
 }

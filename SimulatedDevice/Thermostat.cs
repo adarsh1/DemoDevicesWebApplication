@@ -254,16 +254,21 @@ namespace SimulatedDevice
 
         }
 
+        public void UpdateStatus(string newStatus)
+        {
+            Status = newStatus;
+        }
+
         public async Task UpdateFirmware(string newFirmware)
         {
             await deviceSemaphore.WaitAsync();
             try
             {
                 var tempStatus = Status;
-                Status = "Updating Firmware...";
+                UpdateStatus("Updating Firmware...");
                 await Task.Delay(5000);
                 Firmware = newFirmware;
-                Status = tempStatus;
+                UpdateStatus(tempStatus);
                 TwinCollection properties = new TwinCollection();
                 properties[firmwareProperty] = Firmware;
                 try
@@ -426,21 +431,24 @@ namespace SimulatedDevice
                 await deviceSemaphore.WaitAsync();
                 try
                 {
-                    string status = StandByStatus;
                     if (Math.Abs(Temperature - TargetTemperature) >= 0.2f)
                     {
                         if (Temperature > TargetTemperature)
                         {
                             Temperature -= 0.2f;
-                            status = CoolingStatus;
+                            UpdateStatus(CoolingStatus);
                         }
                         else if (Temperature < TargetTemperature)
                         {
                             Temperature += 0.2f;
-                            status = HeatingStatus;
+                            UpdateStatus(HeatingStatus);
                         }
                     }
-                    Status = status;
+                    else
+                    {
+                        if (Status == HeatingStatus || Status == CoolingStatus)
+                            UpdateStatus(StandByStatus);
+                    }
 
                     await Task.Delay(350);
                 }

@@ -72,6 +72,7 @@ namespace OTAUpdateAgent
         async Task UpdateReportedStatus(UpdateStatus newStatus)
         {
             Status = newStatus;
+            this.managedDevice.UpdateStatus(Status.ToString());
             TwinCollection properties = new TwinCollection();
             properties[UpdateStatusProperty] = Status.ToString();
             try
