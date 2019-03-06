@@ -31,6 +31,14 @@ namespace DemoDevicesWebApplication.Controllers
             return View();
         }
 
+        public ActionResult DigitalTwins()
+        {
+            ViewBag.Title = "DigitalTwins Viewer";
+            ViewBag.Message = "DigitalTwins.";
+
+            return View();
+        }
+
         public ActionResult Service()
         {
             ViewBag.Title = "Service Simulation";

@@ -404,10 +404,17 @@
     <Content Include="Scripts\popper.js" />
     <Content Include="Scripts\popper.min.js" />
     <Content Include="Scripts\respond.min.js" />
+    <Content Include="Scripts\Treant.js" />
     <Content Include="Scripts\umd\popper-utils.js" />
     <Content Include="Scripts\umd\popper-utils.min.js" />
     <Content Include="Scripts\umd\popper.js" />
     <Content Include="Scripts\umd\popper.min.js" />
+    <Content Include="Scripts\vendor\jquery.easing.js" />
+    <Content Include="Scripts\vendor\jquery.min.js" />
+    <Content Include="Scripts\vendor\jquery.mousewheel.js" />
+    <Content Include="Scripts\vendor\perfect-scrollbar\perfect-scrollbar.css" />
+    <Content Include="Scripts\vendor\perfect-scrollbar\perfect-scrollbar.js" />
+    <Content Include="Scripts\vendor\raphael.js" />
     <Content Include="Web.config">
       <SubType>Designer</SubType>
     </Content>
@@ -436,6 +443,7 @@
     <Content Include="Scripts\popper.js.map" />
     <Content Include="Scripts\popper-utils.min.js.map" />
     <Content Include="Scripts\popper-utils.js.map" />
+    <Content Include="Views\Home\DigitalTwins.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

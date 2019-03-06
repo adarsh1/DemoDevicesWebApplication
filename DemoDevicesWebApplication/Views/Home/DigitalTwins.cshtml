@@ -1,0 +1,367 @@
+﻿
+@section css {
+    @Styles.Render("~/Content/Treant/css")
+    @Styles.Render("~/Content/css")
+
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
+    <style>
+
+        .Treant > .node {
+        }
+
+        .Treant > p {
+            font-family: "HelveticaNeue-Light", "Helvetica Neue Light", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .Treant .collapse-switch {
+            width: 100%;
+            height: 100%;
+            border: none;
+            cursor: pointer;
+        }
+
+        .Treant .node.collapsed {
+            background-color: steelblue;
+        }
+
+            .Treant .node.collapsed .collapse-switch {
+                background: none;
+            }
+
+        .node-name {
+            font-weight: bold;
+        }
+
+        .nodeExample1 {
+            padding: 2px;
+            -webkit-border-radius: 3px;
+            -moz-border-radius: 3px;
+            border-radius: 3px;
+            background-color: #ffffff;
+            border: 1px solid #000;
+            //width: 200px;
+            font-family: Tahoma;
+            font-size: 12px;
+        }
+
+            .nodeExample1 img {
+                margin-right: 10px;
+            }
+
+        .gray {
+            background-color: #909090;
+        }
+
+        .light-gray {
+            background-color: #D3D3C7;
+        }
+
+        .blue {
+            background-color: #A2BDFD;
+        }
+    </style>
+
+    <style>
+        body {
+            font-family: Arial;
+        }
+
+        /* Style the tab */
+        .tab {
+            width: 50vw;
+            overflow: hidden;
+            border: 1px solid #ccc;
+            background-color: #f1f1f1;
+            object-fit: fill;
+        }
+
+            /* Style the buttons inside the tab */
+            .tab button {
+                background-color: inherit;
+                float: left;
+                border: none;
+                outline: none;
+                cursor: pointer;
+                padding: 14px 16px;
+                transition: 0.3s;
+                font-size: 17px;
+            }
+
+                /* Change background color of buttons on hover */
+                .tab button:hover {
+                    background-color: #ddd;
+                }
+
+                /* Create an active/current tablink class */
+                .tab button.active {
+                    background-color: #ccc;
+                }
+
+        /* Style the tab content */
+        .tabcontent {
+            width: 50vw;
+            height: 50vh;
+            display: none;
+            padding: 6px 12px;
+            border: 1px solid #ccc;
+            border-top: none;
+            object-fit: fill;
+        }
+
+        .nopadding {
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+    </style>
+}
+
+@section scripts {
+    @Scripts.Render("~/bundles/treant")
+    @Scripts.Render("~/bundles/bootstrap")
+    <script>
+        var trees = {};
+        var globalModelCache = {};
+        var simulationUri = "http://localhost:9003/v1/";
+
+        function openTab(evt, cityName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tabcontent");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tablinks = document.getElementsByClassName("tablinks");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+            document.getElementById(cityName).style.display = "block";
+            evt.currentTarget.className += " active";
+            trees[cityName].chart.tree.reload();
+        }
+
+        function InternalTree(treeJson, container, simulationId) {
+            this.modelCache = globalModelCache;
+            this.tree = treeJson;
+            this.chart = null;
+            this.simulationId = simulationId;
+            this.treantNodes = {}
+            this.treantNodes["config"] = {
+                container: container,
+                hideRootNode: true,
+                nodeAlign: "BOTTOM",
+                connectors: {
+                    type: 'step'
+                },
+                animateOnInit: true,
+                node: {
+                    collapsable: true,
+                    HTMLclass: 'nodeExample1'
+                },
+                animation: {
+                    nodeAnimation: "easeInSine",
+                    nodeSpeed: 700,
+                    connectorsAnimation: "<",
+                    connectorsSpeed: 700
+                }
+            };
+            this.treantNodes["root"] = {};
+        }
+
+        InternalTree.prototype.populateTree = function () {
+            var data = [];
+            var self = this;
+            this.tree.forEach(function (treeNode) {
+                self.addNode(treeNode);
+                data.push(self.processItem(treeNode));
+            });
+            $.when.apply($, data).done(function () {
+                console.log("Done");
+                console.log(data);
+                self.chart = new Treant(Object.values(self.treantNodes), function () { }, $);
+            });
+        }
+
+        InternalTree.prototype.loadDeviceModel = function (modelId, force=false) {
+            var dfd = $.Deferred();
+            var self = this;
+            if (!force && (modelId in this.modelCache)) {
+                dfd.resolve();
+            }
+            else {
+                $.ajax({
+                    type: "Get",
+                    url: simulationUri + "DeviceModels/" + modelId,
+                    success: function (response) {
+                        self.modelCache[modelId] = response;
+                        dfd.resolve()
+                    },
+                    error: function (xhr, ajaxOptions, thrownError) {
+                        dfd.resolve()
+                    }
+                });
+            }
+
+            return dfd.promise();
+        }
+
+        InternalTree.prototype.addMethodsFromDeviceModel = function (data, model) {
+            var html = "<div class='card'><div class='card-header nopadding'><button class='btn btn-link' data-toggle='collapse' data-target='#collapse" + data.Id + "' aria-expanded='true' aria-controls='collapseOne'><i class='fa fa-rocket fa-fw'></i>Methods</button></div ><ul id = 'collapse" + data.Id +"' class='collapse list-group list-group-flush'>";
+            for (item in model.CloudToDeviceMethods) {
+                html += "<li class='list-group-item'><div class='input-group'><div class='input-group-prepend'><span class='input-group-text'>" + item + "</span></div> <input type='textarea' class='form-control' id='" + data.Id + item + "method' placeholder='{}'><div class='input-group-append'><button class='btn btn-outline-secondary' type='button' onclick = \"invokeMethod(event, '" + data.Name + "', '" + this.simulationId + "', '" + data.Name + "')\">Invoke</button></div></div></li>"
+            }
+            html += "</ul></div>";
+            this.treantNodes[data.Name].innerHTML += html
+        }
+        InternalTree.prototype.processItem = function (treeNode) {
+            var dfd = $.Deferred();
+            var dfdParent = $.Deferred();
+            var promises = [dfdParent];
+            var simModelId = null;
+            var query = $("#ApiEndpoint").val() + '/api/Query/' + $("#Tenant").val() + '/' + treeNode.Name + '/Parent';
+            if (this.simulationId) {
+                query += "?simulationId=" + this.simulationId;
+                if (treeNode.DeviceId) {
+                    simModelId = treeNode.DeviceId.split(".")[1];
+                    promises.push(this.loadDeviceModel(simModelId));
+                }
+                
+            }
+            var self = this;
+            
+            $.ajax({
+                type: "Get",
+                url: query,
+                success: function (response) {
+                    var parentNode = JSON.parse(response);
+                    self.addParent(treeNode, parentNode);
+                    dfdParent.resolve()
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    dfdParent.resolve()
+                }
+            });
+
+            $.when.apply($, promises).done(function () {
+                
+                if (simModelId) {
+                    var simModel = self.modelCache[simModelId];
+                    self.addMethodsFromDeviceModel(treeNode, simModel);
+                }
+                dfd.resolve();
+            });
+
+            return dfd.promise();
+        }
+
+        InternalTree.prototype.addNode = function (data) {
+            console.log(JSON.stringify(data));
+            var glyph = "";
+            if (data.Classification === "device") {
+                glyph = "<i class='fa fa-microchip fa-fw'></i>"
+            }
+            var internal = "<div class='card'><div class='card-header'>" + glyph + data.Name + "</div ><ul class='list-group list-group-flush'>";
+            var properties = data.Properties;
+            console.log(JSON.stringify(properties));
+            for (var key in properties) {
+                internal += "<li class='list-group-item'>" + key + "\t:\t" + JSON.stringify(properties[key]) + "</li>";
+            }
+            internal += "</ul></div>";
+            this.treantNodes[data.Name] =
+                {
+                    innerHTML: internal,
+                    parent: this.treantNodes["root"],
+                    text: { name: data.Name }
+                };
+        }
+
+        InternalTree.prototype.addParent = function (data, parent) {
+            this.treantNodes[data.Name].parent = this.treantNodes[parent.Name];
+        }
+
+       
+        
+        $(document).ready(function () {
+
+            $("#startButton").mousedown(function () {
+                $("#graphDiv").removeClass("d-none");
+                fetchGraph("tree", null);
+                $.ajax({
+                    type: "Get",
+                    url: simulationUri + "Simulations",
+                    success: function (simulations) {
+                        simulations.Items.forEach(function (data) {
+                            if (!data.Enabled)
+                                return;
+                            $("#graphNavContent").append("<div class='tabcontent' id='" + data.Id + "' style='object-fit: cover;'><h3> Loading...</h3></div>");
+                            $("#graphNav").append("<button class='tablinks' onclick = \"openTab(event, '" + data.Id + "')\" >" + data.Name + "</button>")
+
+                            fetchGraph(data.Id, data.Id);
+                        });
+                    },
+                    error: function (xhr, ajaxOptions, thrownError) {
+                        alertError(xhr, ajaxOptions, thrownError);
+                    }
+                });
+            });
+
+            function fetchGraph(containerId, simulationId) {
+                var query = $("#ApiEndpoint").val() + '/api/Query/' + $("#Tenant").val()
+                if (simulationId) {
+                    query += "?simulationId=" + simulationId;
+                }
+                $.ajax({
+                    type: "Get",
+                    url: query,
+                    success: function (data) {
+                        var tree = new InternalTree(JSON.parse(data), "#" + containerId, simulationId);
+                        tree.populateTree();
+                        trees[containerId] = tree;
+                    },
+                    error: function (xhr, ajaxOptions, thrownError) {
+                        alertError(xhr, ajaxOptions, thrownError);
+                    }
+                });
+            }
+
+        });
+
+    </script>
+    }
+
+    <div class="jumbotron">
+        <h2>Digital Twins Visualizer</h2>
+    </div>
+    <div class="container-fluid">
+        <h2>Enter IotHub message/events Information</h2>
+        <div class="row" style="padding-top:0.5em;">
+            <div class="col-xs-12">
+                <div class="panel panel-default">
+                    <div class="panel-heading">
+                        <div class="input-group">
+                            <input type="text" id="ApiEndpoint" class="form-control" placeholder="Dynamic API Endpoint" aria-label="Dynamic API Endpoint" aria-describedby="basic-addon2" value="">
+                            <input type="text" id="Tenant" class="form-control" placeholder="Tenant Name" aria-label="Tenant Name" aria-describedby="basic-addon2" value="filipst">
+                            <span class="input-group-btn">
+                                <button id="startButton" class="btn btn-default" type="button">Display</button>
+                            </span>
+                            <span class="input-group-btn">
+                                <button id="stopButton" class="btn btn-default" type="button">Simulate</button>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="row" style="padding-top:0.5em;">
+            <div id="graphDiv" class="col-xs-12 d-none">
+                <div id="graphNav" class="tab col-xs-12">
+                    <button class="tablinks" onclick="openTab(event, 'tree')">DigitalTwin</button>
+                </div>
+                <div id="graphNavContent" class="col-xs-12 clearfix">
+                        <div id="tree" class="tabcontent" style="object-fit: cover;">
+                            <h3> Loading...</h3>
+                        </div>
+                </div>
+            </div>
+        </div>
+    </div>

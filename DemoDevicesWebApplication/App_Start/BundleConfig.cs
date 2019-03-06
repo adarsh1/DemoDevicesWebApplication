@@ -16,6 +16,11 @@ namespace DemoDevicesWebApplication
             bundles.Add(new ScriptBundle("~/bundles/modernizr").Include(
                         "~/Scripts/modernizr-*"));
 
+            bundles.Add(new ScriptBundle("~/bundles/treant").Include(
+                        "~/Scripts/vendor/raphael.js",
+                        "~/Scripts/vendor/jquery.easing.js",
+                        "~/Scripts/Treant.js"));
+
             bundles.Add(new ScriptBundle("~/bundles/bootstrap").Include(
                       "~/Scripts/bootstrap.min.js",
                       "~/Scripts/popper.min.js",
@@ -27,6 +32,9 @@ namespace DemoDevicesWebApplication
 
             bundles.Add(new StyleBundle("~/Content/Thermostat/css").Include(
                       "~/Content/Thermostat/thermostat.css"));
+
+            bundles.Add(new StyleBundle("~/Content/Treant/css").Include(
+                      "~/Content/Treant.css"));
 
             bundles.Add(new ScriptBundle("~/bundles/colorMaps").Include(
                       "~/Scripts/colormaps.js"));
