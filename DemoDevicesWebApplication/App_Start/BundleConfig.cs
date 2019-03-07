@@ -26,6 +26,9 @@ namespace DemoDevicesWebApplication
                       "~/Scripts/bootstrap.min.js",
                       "~/Scripts/respond.min.js"));
 
+            bundles.Add(new ScriptBundle("~/bundles/jsoneditor").Include(
+                      "~/Scripts/jquery.json-editor.min.js"));
+
             bundles.Add(new StyleBundle("~/Content/css").Include(
                       "~/Content/bootstrap.min.css",
                       "~/Content/site.css"));

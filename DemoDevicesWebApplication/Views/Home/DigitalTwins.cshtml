@@ -113,27 +113,56 @@
         .treeContainer {
             width: 100%;
             height: 100%;
-            object-fit: fill;
+            object-fit: contain;
         }
 
         .nopadding {
             padding: 0 !important;
             margin: 0 !important;
         }
+
+        #json-input {
+            display: block;
+            width: 100%;
+            height: 200px;
+        }
+
+        #json-display {
+            border: 1px solid #000;
+            margin: 0;
+            padding: 10px 20px;
+        }
     </style>
 }
 
 @section scripts {
-   
+
     @Scripts.Render("~/bundles/treant")
     @Scripts.Render("~/bundles/bootstrap")
+    @Scripts.Render("~/bundles/jsoneditor")
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.2/js/bootstrap-select.min.js"></script>
+    <script type="text/javascript">
+        function getJson() {
+            try {
+                return JSON.parse($('#json-input').val());
+            } catch (ex) {
+                //alert('Wrong JSON Format: ' + ex);
+                return {};
+            }
+        }
+
+        var editor = new JsonEditor('#json-display', getJson());
+        $('#json-input').bind('input propertychange', function () {
+            editor.load(getJson());
+        });
+    </script>
     <script>
         var trees = {};
         var globalModelCache = {};
         var globalScriptCache = {};
         var simulationUri = "http://localhost:9003/v1/";
         var simulationManagementUri = "https://localhost:44321/api/";
+        var authoringUri = "https://digitaltwinsauthoring20190227020728.azurewebsites.net/api/authoringservices/";
 
         (function ($) {
             $.fn.button = function (action) {
@@ -174,12 +203,12 @@
             for (i = 0; i < tablinks.length; i++) {
                 tablinks[i].className = tablinks[i].className.replace(" active", "");
             }
-            document.getElementById(cityName +"TabContent").style.display = "block";
+            document.getElementById(cityName + "TabContent").style.display = "block";
             evt.currentTarget.className += " active";
             if (trees[cityName]) {
                 trees[cityName].chart.tree.reload();
             }
-            
+
         }
 
         function deleteSimulation(evt, simulationId) {
@@ -195,13 +224,13 @@
                     $("#" + simulationId + "TabButton").remove();
 
                     if (trees[simulationId]) {
-                        delete trees[simulationId]; 
+                        delete trees[simulationId];
                     }
 
                     $(evt.target).button('reset');
                 },
                 error: function (xhr, ajaxOptions, thrownError) {
-                    handleMessage("Error", " Failed to Delete " + simulationId+" : " + thrownError);
+                    handleMessage("Error", " Failed to Delete " + simulationId + " : " + thrownError);
                     $(evt.target).button('reset');
                 }
             });
@@ -325,11 +354,11 @@
 
             }
             else {
-                if (treeNode.Classification=="device") {
+                if (treeNode.Classification == "device") {
                     $("#simModelAssociations")
                         .append("<div class='input-group'><div class='input-group-prepend'><span class='input-group-text'>" + treeNode.Name + "</span></div><select id='test' class='selectpicker modelSelect' data-live-search='true' title='Select Model'></select></div>");
                 }
-                
+
             }
             var self = this;
 
@@ -387,7 +416,7 @@
         function renderSimulation(data) {
 
             if (!$("#" + data.Id).length) {
-                $("#graphNavContent").append("<div class='tabcontent' id='" + data.Id + "TabContent'><p>"+data.Description+"</p><button id='delete+" + data.Id + "' class='btn btn-default deleteSim' type='button' onclick =\"deleteSimulation(event, '" + data.Id + "')\" data-loading-text=\" <i class= 'fa fa-circle-o-notch fa-spin'></i> Deleting Simulation\">Delete</button><div id='" + data.Id + "' class='treeContainer' style='object-fit: cover;'><h3> Loading...</h3></div></div>");
+                $("#graphNavContent").append("<div class='tabcontent' id='" + data.Id + "TabContent'><p>" + data.Description + "</p><button id='delete+" + data.Id + "' class='btn btn-default deleteSim' type='button' onclick =\"deleteSimulation(event, '" + data.Id + "')\" data-loading-text=\" <i class= 'fa fa-circle-o-notch fa-spin'></i> Deleting Simulation\">Delete</button><div id='" + data.Id + "' class='treeContainer' style='object-fit: cover;'><h3> Loading...</h3></div></div>");
                 $("#graphNav").append("<button class='tablinks' id='" + data.Id + "TabButton' onclick = \"openTab(event, '" + data.Id + "')\" >" + data.Name + "</button>")
             }
 
@@ -399,7 +428,7 @@
 
             for (modelId in globalModelCache) {
                 model = globalModelCache[modelId];
-                appendHtml += '<option value="' + modelId + '">' + model.Name + ' Version: '+model.Version+'</option>';
+                appendHtml += '<option value="' + modelId + '">' + model.Name + ' Version: ' + model.Version + '</option>';
             }
 
             $('.selectpicker.modelSelect')
@@ -532,7 +561,7 @@
 
                 $.ajax({
                     type: "POST",
-                    url: simulationManagementUri+ $("#Tenant").val()+"/SimulationManager",
+                    url: simulationManagementUri + $("#Tenant").val() + "/SimulationManager",
                     accept: "text/plain",
                     contentType: "application/json-patch+json",
                     data: JSON.stringify(request),
@@ -543,12 +572,55 @@
                             url: simulationUri + "Simulations/" + simulationId,
                             success: function (data) {
                                 if (!data.Enabled)
-                                        return;
+                                    return;
                                 promises.push(renderSimulation(data));
                                 simDfd.resolve();
                             },
                             error: function (xhr, ajaxOptions, thrownError) {
-                                handleMessage("Error", "Could not retrieve simulation " + simulationId+": " + thrownError);
+                                handleMessage("Error", "Could not retrieve simulation " + simulationId + ": " + thrownError);
+                                simDfd.resolve();
+                            }
+                        });
+                    },
+                    error: function (xhr, ajaxOptions, thrownError) {
+                        handleMessage("Error", "Could not post simulation : " + thrownError);
+                        simDfd.resolve();
+                    }
+                });
+
+                $.when.apply($, promises).done(function () {
+                    buttonRef.button('reset');
+                });
+            });
+
+            $("#authoringButton").mousedown(function () {
+                $(this).button('loading');
+
+                var promises = [];
+                var buttonRef = $(this);
+                var simDfd = $.Deferred();
+                promises.push(simDfd.promise());
+                var request = $("#json-input").val();
+
+                $.ajax({
+                    type: "POST",
+                    url: authoringUri + $("#Tenant").val() + "/SimulationManager",
+                    accept: "text/plain",
+                    contentType: "application/json-patch+json",
+                    data: JSON.stringify(request),
+                    success: function (simulationId) {
+
+                        $.ajax({
+                            type: "Get",
+                            url: simulationUri + "Simulations/" + simulationId,
+                            success: function (data) {
+                                if (!data.Enabled)
+                                    return;
+                                promises.push(renderSimulation(data));
+                                simDfd.resolve();
+                            },
+                            error: function (xhr, ajaxOptions, thrownError) {
+                                handleMessage("Error", "Could not retrieve simulation " + simulationId + ": " + thrownError);
                                 simDfd.resolve();
                             }
                         });
@@ -564,7 +636,6 @@
                 });
             });
         });
-
     </script>
 }
 
@@ -595,33 +666,244 @@
     <div class="row" style="padding-top:0.5em;">
         <div id="graphDiv" class="col-xs-12 d-none">
             <div id="graphNav" class="tab col-xs-12">
+                <button id="authoringTab" class="tablinks metaTab" onclick="openTab(event, 'authoring')" disabled>Authoring</button>
                 <button id="newSimTab" class="tablinks metaTab" onclick="openTab(event, 'newSim')" disabled>New Simulation</button>
                 <button class="tablinks active" onclick="openTab(event, 'tree')">DigitalTwin</button>
             </div>
             <div id="graphNavContent" class="col-xs-12 clearfix">
-                <div id="newSimTabContent" class="tabcontent" style="object-fit: cover;">
+                <div id="authoringTabContent" class="tabcontent" style="object-fit: cover;">
+                    <button id="authorButton" class="btn" type="button" data-loading-text="<i class='fa fa-circle-o-notch fa-spin'></i> Authoring">Author</button>
                     <div class="form-group">
-                        <label for="simName">Simulation Name:</label>
-                        <input type="text" class="form-control" id="simName">
+                        <label for="authoringModelName">Model Name:</label>
+                        <input type="text" class="form-control" id="authoringModelName">
                     </div>
                     <div class="form-group">
-                        <label for="simDesc">Simulation Description:</label>
-                        <input type="text" class="form-control" id="simDesc">
-                    </div>
-                    <div class="form-group">
-                        <h4>Model Associations</h4>
-                        <div id="simModelAssociations">
-                            
+                        <textarea id="json-input" autocomplete="off">
+         {
+    "definitions": {},
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "http://example.com/root.json",
+    "type": "object",
+    "title": "The Root Schema",
+    "required": [
+      "Name",
+      "type",
+      "parentName",
+      "InterfaceName",
+      "properties",
+      "Floors"
+    ],
+    "properties": {
+      "Name": {
+        "$id": "#/properties/Name",
+        "type": "string",
+        "title": "The Name Schema",
+        "default": "",
+        "examples": [
+          "Building"
+        ],
+        "pattern": "^(.*)$"
+      },
+      "type": {
+        "$id": "#/properties/type",
+        "type": "string",
+        "title": "The Type Schema",
+        "default": "",
+        "examples": [
+          ""
+        ],
+        "pattern": "^(.*)$"
+      },
+      "parentName": {
+        "$id": "#/properties/parentName",
+        "type": "string",
+        "title": "The Parentname Schema",
+        "default": "",
+        "examples": [
+          ""
+        ],
+        "pattern": "^(.*)$"
+      },
+      "InterfaceName": {
+        "$id": "#/properties/InterfaceName",
+        "type": "string",
+        "title": "The Interfacename Schema",
+        "default": "",
+        "examples": [
+          ""
+        ],
+        "pattern": "^(.*)$"
+      },
+      "properties": {
+        "$id": "#/properties/properties",
+        "type": "object",
+        "title": "The Properties Schema"
+      },
+      "Floors": {
+        "$id": "#/properties/Floors",
+        "type": "array",
+        "title": "The Floors Schema",
+        "items": {
+          "$id": "#/properties/Floors/items",
+          "type": "object",
+          "title": "The Items Schema",
+          "required": [
+            "name",
+            "parentName",
+            "InterfaceName",
+            "properties"
+            ],
+          "properties": {
+            "name": {
+              "$id": "#/properties/Floors/items/properties/name",
+              "type": "string",
+              "title": "The Name Schema",
+              "default": "",
+              "examples": [
+                "Floor"
+              ],
+              "pattern": "^(.*)$"
+            },
+            "parentName": {
+              "$id": "#/properties/Floors/items/properties/parentName",
+              "type": "string",
+              "title": "The Parentname Schema",
+              "default": "",
+              "examples": [
+                ""
+              ],
+              "pattern": "^(.*)$"
+            },
+            "InterfaceName": {
+              "$id": "#/properties/Floors/items/properties/InterfaceName",
+              "type": "string",
+              "title": "The Interfacename Schema",
+              "default": "",
+              "examples": [
+                ""
+              ],
+              "pattern": "^(.*)$"
+            },
+            "properties": {
+              "$id": "#/properties/Floors/items/properties/properties",
+              "type": "object",
+              "title": "The Properties Schema",
+              "required": [
+                "IsOccupied"
+              ],
+              "properties": {
+                "IsOccupied": {
+                  "$id": "#/properties/Floors/items/properties/properties/properties/IsOccupied",
+                  "type": "boolean",
+                  "title": "The Isoccupied Schema",
+                  "default": false,
+                  "examples": [
+                    false
+                  ]
+                }
+              }
+            },
+            "Room": {
+              "$id": "#/properties/Floors/items/properties/Room",
+              "type": "array",
+              "title": "The Room Schema",
+              "items": {
+                "$id": "#/properties/Floors/items/properties/Room/items",
+                "type": "object",
+                "title": "The Items Schema",
+                "required": [
+                  "name",
+                  "parentName",
+                  "InterfaceName",
+                  "properties"
+                ],
+                "properties": {
+                  "name": {
+                    "$id": "#/properties/Floors/items/properties/Room/items/properties/name",
+                    "type": "string",
+                    "title": "The Name Schema",
+                    "default": "",
+                    "examples": [
+                      "Room"
+                    ],
+                    "pattern": "^(.*)$"
+                  },
+                  "parentName": {
+                    "$id": "#/properties/Floors/items/properties/Room/items/properties/parentName",
+                    "type": "string",
+                    "title": "The Parentname Schema",
+                    "default": "",
+                    "examples": [
+                      ""
+                    ],
+                    "pattern": "^(.*)$"
+                  },
+                  "InterfaceName": {
+                    "$id": "#/properties/Floors/items/properties/Room/items/properties/InterfaceName",
+                    "type": "string",
+                    "title": "The Interfacename Schema",
+                    "default": "",
+                    "examples": [
+                      ""
+                    ],
+                    "pattern": "^(.*)$"
+                  },
+                  "properties": {
+                    "$id": "#/properties/Floors/items/properties/Room/items/properties/properties",
+                    "type": "object",
+                    "title": "The Properties Schema",
+                    "required": [
+                      "IsOccupied"
+                    ],
+                    "properties": {
+                      "IsOccupied": {
+                        "$id": "#/properties/Floors/items/properties/Room/items/properties/properties/properties/IsOccupied",
+                        "type": "boolean",
+                        "title": "The Isoccupied Schema",
+                        "default": false,
+                        "examples": [
+                          false
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+
+        
+    </textarea>
+                        <pre id="json-display"></pre>
                         </div>
                     </div>
-                    <button id="simulateButton" class="btn btn-default" type="button" data-loading-text="<i class='fa fa-circle-o-notch fa-spin'></i> Creating Simulation">Simulate</button>
-                </div>
-                <div  id="treeTabContent" class="tabcontent" style="object-fit: cover;overflow: auto;display: block;">
-                    <div id="tree" class="treeContainer">
-                        <h3> Loading...</h3>
+                    <div id="newSimTabContent" class="tabcontent" style="object-fit: cover;">
+                        <div class="form-group">
+                            <label for="simName">Simulation Name:</label>
+                            <input type="text" class="form-control" id="simName">
+                        </div>
+                        <div class="form-group">
+                            <label for="simDesc">Simulation Description:</label>
+                            <input type="text" class="form-control" id="simDesc">
+                        </div>
+                        <div class="form-group">
+                            <h4>Model Associations</h4>
+                            <div id="simModelAssociations">
+
+                            </div>
+                        </div>
+                        <button id="simulateButton" class="btn btn-default" type="button" data-loading-text="<i class='fa fa-circle-o-notch fa-spin'></i> Creating Simulation">Simulate</button>
+                    </div>
+                    <div id="treeTabContent" class="tabcontent" style="object-fit: cover;overflow: auto;display: block;">
+                        <div id="tree" class="treeContainer">
+                            <h3> Loading...</h3>
+                        </div>
                     </div>
                 </div>
-            </div>
         </div>
     </div>
 </div>
