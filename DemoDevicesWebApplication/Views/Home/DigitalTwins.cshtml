@@ -2,7 +2,7 @@
 @section css {
     @Styles.Render("~/Content/Treant/css")
     @Styles.Render("~/Content/css")
-
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.2/css/bootstrap-select.min.css">
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css">
     <style>
 
@@ -110,6 +110,12 @@
             object-fit: fill;
         }
 
+        .treeContainer {
+            width: 100%;
+            height: 100%;
+            object-fit: fill;
+        }
+
         .nopadding {
             padding: 0 !important;
             margin: 0 !important;
@@ -118,13 +124,46 @@
 }
 
 @section scripts {
+   
     @Scripts.Render("~/bundles/treant")
     @Scripts.Render("~/bundles/bootstrap")
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-select/1.13.2/js/bootstrap-select.min.js"></script>
     <script>
         var trees = {};
         var globalModelCache = {};
+        var globalScriptCache = {};
         var simulationUri = "http://localhost:9003/v1/";
+        var simulationManagementUri = "https://localhost:44321/api/";
 
+        (function ($) {
+            $.fn.button = function (action) {
+                if (action === 'loading' && this.data('loading-text')) {
+                    this.data('original-text', this.html()).html(this.data('loading-text')).prop('disabled', true);
+                }
+                if (action === 'reset' && this.data('original-text')) {
+                    this.html(this.data('original-text')).prop('disabled', false);
+                }
+            };
+        }(jQuery));
+
+        function handleMessage(type, message) {
+            switch (type) {
+                case "Error":
+                    alertClass = "alert-danger";
+                    break;
+                case "Informational":
+                    alertClass = "alert-info";
+                    break;
+                case "Success":
+                    alertClass = "alert-success";
+                    break;
+                default:
+                    alertClass = "alert-dark";
+                    break;
+            }
+
+            $(".alertContainer").append("<div class=\"alert " + alertClass + " alert-dismissible\"><button class=\"close\" data-dismiss=\"alert\">&times;</button><strong>Note! </strong>" + message + "</div>");
+        }
         function openTab(evt, cityName) {
             var i, tabcontent, tablinks;
             tabcontent = document.getElementsByClassName("tabcontent");
@@ -135,9 +174,39 @@
             for (i = 0; i < tablinks.length; i++) {
                 tablinks[i].className = tablinks[i].className.replace(" active", "");
             }
-            document.getElementById(cityName).style.display = "block";
+            document.getElementById(cityName +"TabContent").style.display = "block";
             evt.currentTarget.className += " active";
-            trees[cityName].chart.tree.reload();
+            if (trees[cityName]) {
+                trees[cityName].chart.tree.reload();
+            }
+            
+        }
+
+        function invokeMethod(evt, modelName, simulationId, methodName, inputSelector) {
+            var val = $(inputSelector).val();
+            $(evt.target).button('loading');
+            var url = $("#ApiEndpoint").val() + '/api/' + $("#Tenant").val() + "/devices/" + modelName + "/invoke/" + methodName;
+            if (simulationId) {
+                url += "?simulationId=" + simulationId;
+            }
+            if (!val) {
+                val = "{}"
+            }
+            $.ajax({
+                type: "POST",
+                url: url,
+                accept: "text/plain",
+                contentType: "application/json-patch+json",
+                data: val,
+                success: function (response) {
+                    handleMessage("Success", modelName + " " + methodName + " : " + response);
+                    $(evt.target).button('reset');
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    handleMessage("Error", modelName + " " + methodName + " : " + thrownError);
+                    $(evt.target).button('reset');
+                }
+            });
         }
 
         function InternalTree(treeJson, container, simulationId) {
@@ -168,7 +237,7 @@
             this.treantNodes["root"] = {};
         }
 
-        InternalTree.prototype.populateTree = function () {
+        InternalTree.prototype.populateTree = function (buttonRef) {
             var data = [];
             var self = this;
             this.tree.forEach(function (treeNode) {
@@ -179,10 +248,13 @@
                 console.log("Done");
                 console.log(data);
                 self.chart = new Treant(Object.values(self.treantNodes), function () { }, $);
+                if (buttonRef) {
+                    buttonRef.button('reset');
+                }
             });
         }
 
-        InternalTree.prototype.loadDeviceModel = function (modelId, force=false) {
+        InternalTree.prototype.loadDeviceModel = function (modelId, force = false) {
             var dfd = $.Deferred();
             var self = this;
             if (!force && (modelId in this.modelCache)) {
@@ -206,9 +278,9 @@
         }
 
         InternalTree.prototype.addMethodsFromDeviceModel = function (data, model) {
-            var html = "<div class='card'><div class='card-header nopadding'><button class='btn btn-link' data-toggle='collapse' data-target='#collapse" + data.Id + "' aria-expanded='true' aria-controls='collapseOne'><i class='fa fa-rocket fa-fw'></i>Methods</button></div ><ul id = 'collapse" + data.Id +"' class='collapse list-group list-group-flush'>";
+            var html = "<div class='card'><div class='card-header nopadding'><button class='btn btn-link' data-toggle='collapse' data-target='#collapse" + data.Id + "' aria-expanded='true' aria-controls='collapseOne'><i class='fa fa-rocket fa-fw'></i>Methods</button></div ><ul id = 'collapse" + data.Id + "' class='collapse list-group list-group-flush'>";
             for (item in model.CloudToDeviceMethods) {
-                html += "<li class='list-group-item'><div class='input-group'><div class='input-group-prepend'><span class='input-group-text'>" + item + "</span></div> <input type='textarea' class='form-control' id='" + data.Id + item + "method' placeholder='{}'><div class='input-group-append'><button class='btn btn-outline-secondary' type='button' onclick = \"invokeMethod(event, '" + data.Name + "', '" + this.simulationId + "', '" + data.Name + "')\">Invoke</button></div></div></li>"
+                html += "<li class='list-group-item'><div class='input-group'><div class='input-group-prepend'><span class='input-group-text'>" + item + "</span></div> <input type='textarea' class='form-control' id='" + data.Id + item + "method' placeholder='{}'><div class='input-group-append'><button class='btn btn-outline-secondary' type='button' data-loading-text=\" <i class='fa fa-circle-o-notch fa-spin'></i> Invoking\" onclick = \"invokeMethod(event, '" + data.Name + "', '" + this.simulationId + "', '" + item + "', '#" + data.Id + item + "method')\">Invoke</button></div></div></li>"
             }
             html += "</ul></div>";
             this.treantNodes[data.Name].innerHTML += html
@@ -225,10 +297,17 @@
                     simModelId = treeNode.DeviceId.split(".")[1];
                     promises.push(this.loadDeviceModel(simModelId));
                 }
+
+            }
+            else {
+                if (treeNode.Classification=="device") {
+                    $("#simModelAssociations")
+                        .append("<div class='input-group'><div class='input-group-prepend'><span class='input-group-text'>" + treeNode.Name + "</span></div><select id='test' class='selectpicker modelSelect' data-live-search='true' title='Select Model'></select></div>");
+                }
                 
             }
             var self = this;
-            
+
             $.ajax({
                 type: "Get",
                 url: query,
@@ -243,7 +322,7 @@
             });
 
             $.when.apply($, promises).done(function () {
-                
+
                 if (simModelId) {
                     var simModel = self.modelCache[simModelId];
                     self.addMethodsFromDeviceModel(treeNode, simModel);
@@ -279,13 +358,80 @@
             this.treantNodes[data.Name].parent = this.treantNodes[parent.Name];
         }
 
-       
-        
+
+        function renderSimulation(data) {
+
+            if (!$("#" + data.Id).length) {
+                $("#graphNavContent").append("<div class='tabcontent' id='" + data.Id + "TabContent'><button id='delete+" + data.Id + "' class='btn btn-default deleteSim' type='button' data-loading-text=\" < i class= 'fa fa-circle-o-notch fa-spin' onclick = \"deleteSimulation(event, '" + data.Id + "')\"></i > Deleting Simulation\">Delete</button><div id='" + data.Id + "' class='treeContainer' style='object-fit: cover;'><h3> Loading...</h3></div></div>");
+                $("#graphNav").append("<button class='tablinks' onclick = \"openTab(event, '" + data.Id + "')\" >" + data.Name + "</button>")
+            }
+
+            fetchGraph(data.Id, data.Id);
+        }
+
+        function refreshModelSelects() {
+            var appendHtml = "";
+
+            for (modelId in globalModelCache) {
+                model = globalModelCache[modelId];
+                appendHtml += '<option value="' + modelId + '">' + model.Name + ' Version: '+model.Version+'</option>';
+            }
+
+            $('.selectpicker.modelSelect')
+                .find('option')
+                .remove()
+                .end();
+
+            $('.selectpicker.modelSelect')
+                .append(appendHtml)
+                .val(Object.keys(globalModelCache)[0])
+                .end();
+
+            $('.selectpicker.modelSelect')
+                .selectpicker('refresh');
+        }
+
+        function fetchGraph(containerId, simulationId) {
+            var dfd = $.Deferred();
+            var query = $("#ApiEndpoint").val() + '/api/Query/' + $("#Tenant").val()
+            if (simulationId) {
+                query += "?simulationId=" + simulationId;
+            }
+            $.ajax({
+                type: "Get",
+                url: query,
+                success: function (data) {
+                    var tree = new InternalTree(JSON.parse(data), "#" + containerId, simulationId);
+                    tree.populateTree();
+                    trees[containerId] = tree;
+                    dfd.resolve();
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    handleMessage("Error", "Could not retrieve graph : " + thrownError);
+                    dfd.resolve();
+                }
+            });
+            return dfd.promise();
+        }
+
         $(document).ready(function () {
 
             $("#startButton").mousedown(function () {
+                $(this).button('loading');
+                $("#simModelAssociations")
+                    .find('.input-group')
+                    .remove()
+                    .end();
                 $("#graphDiv").removeClass("d-none");
-                fetchGraph("tree", null);
+                var promises = [];
+                promises.push(fetchGraph("tree", null));
+                var buttonRef = $(this);
+                var simDfd = $.Deferred();
+                promises.push(simDfd.promise());
+                var scriptDfd = $.Deferred();
+                promises.push(scriptDfd.promise());
+                var modDfd = $.Deferred();
+                promises.push(modDfd.promise());
                 $.ajax({
                     type: "Get",
                     url: simulationUri + "Simulations",
@@ -293,75 +439,164 @@
                         simulations.Items.forEach(function (data) {
                             if (!data.Enabled)
                                 return;
-                            $("#graphNavContent").append("<div class='tabcontent' id='" + data.Id + "' style='object-fit: cover;'><h3> Loading...</h3></div>");
-                            $("#graphNav").append("<button class='tablinks' onclick = \"openTab(event, '" + data.Id + "')\" >" + data.Name + "</button>")
-
-                            fetchGraph(data.Id, data.Id);
+                            promises.push(renderSimulation(data));
                         });
+                        simDfd.resolve();
                     },
                     error: function (xhr, ajaxOptions, thrownError) {
-                        alertError(xhr, ajaxOptions, thrownError);
+                        handleMessage("Error", "Could not retrieve simulations : " + thrownError);
+                        simDfd.resolve();
                     }
+                });
+
+                $.ajax({
+                    type: "Get",
+                    url: simulationUri + "DeviceModelScripts",
+                    success: function (scripts) {
+                        scripts.Items.forEach(function (data) {
+                            globalScriptCache[data.Id] = data;
+                        });
+                        scriptDfd.resolve();
+                    },
+                    error: function (xhr, ajaxOptions, thrownError) {
+                        handleMessage("Error", "Could not retrieve simulations : " + thrownError);
+                        scriptDfd.resolve();
+                    }
+                });
+
+                $.ajax({
+                    type: "Get",
+                    url: simulationUri + "DeviceModels",
+                    success: function (scripts) {
+                        scripts.Items.forEach(function (data) {
+                            globalModelCache[data.Id] = data;
+                        });
+                        modDfd.resolve();
+                    },
+                    error: function (xhr, ajaxOptions, thrownError) {
+                        handleMessage("Error", "Could not retrieve simulations : " + thrownError);
+                        modDfd.resolve();
+                    }
+                });
+
+                $.when.apply($, promises).done(function () {
+                    refreshModelSelects();
+                    $("#newSimTab").removeAttr("disabled");
+                    buttonRef.button('reset');
                 });
             });
 
-            function fetchGraph(containerId, simulationId) {
-                var query = $("#ApiEndpoint").val() + '/api/Query/' + $("#Tenant").val()
-                if (simulationId) {
-                    query += "?simulationId=" + simulationId;
-                }
+            $("#simulateButton").mousedown(function () {
+                $(this).button('loading');
+
+                var promises = [];
+                var buttonRef = $(this);
+                var simDfd = $.Deferred();
+                promises.push(simDfd.promise());
+                var request = {
+                    "name": $("#simName").val(),
+                    "description": $("#simDesc").val(),
+                    "modelAssosiations": {}
+                };
+
+                $('#simModelAssociations').children('.input-group').each(function () {
+                    var nodeName = $(this).children(".input-group-prepend").text();
+                    var modelId = $(this).find(".selectpicker").val();
+                    request.modelAssosiations[nodeName] = modelId;
+                });
+
                 $.ajax({
-                    type: "Get",
-                    url: query,
-                    success: function (data) {
-                        var tree = new InternalTree(JSON.parse(data), "#" + containerId, simulationId);
-                        tree.populateTree();
-                        trees[containerId] = tree;
+                    type: "POST",
+                    url: simulationManagementUri+ $("#Tenant").val()+"/SimulationManager",
+                    accept: "text/plain",
+                    contentType: "application/json-patch+json",
+                    data: JSON.stringify(request),
+                    success: function (simulationId) {
+
+                        $.ajax({
+                            type: "Get",
+                            url: simulationUri + "Simulations/" + simulationId,
+                            success: function (data) {
+                                if (!data.Enabled)
+                                        return;
+                                promises.push(renderSimulation(data));
+                                simDfd.resolve();
+                            },
+                            error: function (xhr, ajaxOptions, thrownError) {
+                                handleMessage("Error", "Could not retrieve simulation " + simulationId+": " + thrownError);
+                                simDfd.resolve();
+                            }
+                        });
                     },
                     error: function (xhr, ajaxOptions, thrownError) {
-                        alertError(xhr, ajaxOptions, thrownError);
+                        handleMessage("Error", "Could not post simulation : " + thrownError);
+                        simDfd.resolve();
                     }
                 });
-            }
 
+                $.when.apply($, promises).done(function () {
+                    buttonRef.button('reset');
+                });
+            });
         });
 
     </script>
-    }
+}
 
-    <div class="jumbotron">
-        <h2>Digital Twins Visualizer</h2>
-    </div>
-    <div class="container-fluid">
-        <h2>Enter IotHub message/events Information</h2>
-        <div class="row" style="padding-top:0.5em;">
-            <div class="col-xs-12">
-                <div class="panel panel-default">
-                    <div class="panel-heading">
-                        <div class="input-group">
-                            <input type="text" id="ApiEndpoint" class="form-control" placeholder="Dynamic API Endpoint" aria-label="Dynamic API Endpoint" aria-describedby="basic-addon2" value="">
-                            <input type="text" id="Tenant" class="form-control" placeholder="Tenant Name" aria-label="Tenant Name" aria-describedby="basic-addon2" value="filipst">
-                            <span class="input-group-btn">
-                                <button id="startButton" class="btn btn-default" type="button">Display</button>
-                            </span>
-                            <span class="input-group-btn">
-                                <button id="stopButton" class="btn btn-default" type="button">Simulate</button>
-                            </span>
-                        </div>
+<div class="jumbotron">
+    <h2>Digital Twins Visualizer</h2>
+</div>
+<div class="container-fluid">
+    <h2>Enter IotHub message/events Information</h2>
+    <div class="row" style="padding-top:0.5em;">
+        <div class="col-xs-12">
+            <div class="panel panel-default">
+                <div class="panel-heading">
+                    <div class="input-group">
+                        <input type="text" id="ApiEndpoint" class="form-control" placeholder="Dynamic API Endpoint" aria-label="Dynamic API Endpoint" aria-describedby="basic-addon2" value="https://digitaltwinsdynamicapi.azurewebsites.net">
+                        <input type="text" id="Tenant" class="form-control" placeholder="Tenant Name" aria-label="Tenant Name" aria-describedby="basic-addon2" value="filipst">
+                        <span class="input-group-btn">
+                            <button id="startButton" class="btn btn-default" type="button" data-loading-text="<i class='fa fa-circle-o-notch fa-spin'></i> Loading Tree">Display</button>
+                        </span>
                     </div>
                 </div>
             </div>
         </div>
-        <div class="row" style="padding-top:0.5em;">
-            <div id="graphDiv" class="col-xs-12 d-none">
-                <div id="graphNav" class="tab col-xs-12">
-                    <button class="tablinks" onclick="openTab(event, 'tree')">DigitalTwin</button>
-                </div>
-                <div id="graphNavContent" class="col-xs-12 clearfix">
-                        <div id="tree" class="tabcontent" style="object-fit: cover;">
-                            <h3> Loading...</h3>
+    </div>
+    <div class="row" style="padding-top:0.5em;">
+        <div class="alertContainer col-xs-12">
+        </div>
+    </div>
+    <div class="row" style="padding-top:0.5em;">
+        <div id="graphDiv" class="col-xs-12 d-none">
+            <div id="graphNav" class="tab col-xs-12">
+                <button id="newSimTab" class="tablinks" onclick="openTab(event, 'newSim')" disabled>New Simulation</button>
+                <button class="tablinks active" onclick="openTab(event, 'tree')">DigitalTwin</button>
+            </div>
+            <div id="graphNavContent" class="col-xs-12 clearfix">
+                <div id="newSim" class="tabcontent" style="object-fit: cover;">
+                    <div class="form-group">
+                        <label for="simName">Simulation Name:</label>
+                        <input type="text" class="form-control" id="simName">
+                    </div>
+                    <div class="form-group">
+                        <label for="simDesc">Simulation Description:</label>
+                        <input type="text" class="form-control" id="simDesc">
+                    </div>
+                    <div class="form-group">
+                        <h4>Model Associations</h4>
+                        <div id="simModelAssociations">
+                            
                         </div>
+                    </div>
+                    <button id="simulateButton" class="btn btn-default" type="button" data-loading-text="<i class='fa fa-circle-o-notch fa-spin'></i> Creating Simulation">Simulate</button>
+                </div>
+                <div  class="tabcontent" style="object-fit: cover;overflow: auto;display: block;">
+                    <div id="tree" class="treeContainer">
+                        <h3> Loading...</h3>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+</div>

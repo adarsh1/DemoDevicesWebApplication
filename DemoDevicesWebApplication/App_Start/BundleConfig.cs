@@ -22,8 +22,8 @@ namespace DemoDevicesWebApplication
                         "~/Scripts/Treant.js"));
 
             bundles.Add(new ScriptBundle("~/bundles/bootstrap").Include(
+                      "~/Scripts/umd/popper.min.js",
                       "~/Scripts/bootstrap.min.js",
-                      "~/Scripts/popper.min.js",
                       "~/Scripts/respond.min.js"));
 
             bundles.Add(new StyleBundle("~/Content/css").Include(
