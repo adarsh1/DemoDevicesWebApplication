@@ -182,6 +182,31 @@
             
         }
 
+        function deleteSimulation(evt, simulationId) {
+            $(evt.target).button('loading');
+
+            $.ajax({
+                type: "DELETE",
+                url: simulationManagementUri + $("#Tenant").val() + "/SimulationManager/" + simulationId,
+                success: function () {
+                    handleMessage("Success", "Deleted : " + simulationId);
+
+                    $("#" + simulationId + "TabContent").remove();
+                    $("#" + simulationId + "TabButton").remove();
+
+                    if (trees[simulationId]) {
+                        delete trees[simulationId]; 
+                    }
+
+                    $(evt.target).button('reset');
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    handleMessage("Error", " Failed to Delete " + simulationId+" : " + thrownError);
+                    $(evt.target).button('reset');
+                }
+            });
+        }
+
         function invokeMethod(evt, modelName, simulationId, methodName, inputSelector) {
             var val = $(inputSelector).val();
             $(evt.target).button('loading');
@@ -362,8 +387,8 @@
         function renderSimulation(data) {
 
             if (!$("#" + data.Id).length) {
-                $("#graphNavContent").append("<div class='tabcontent' id='" + data.Id + "TabContent'><button id='delete+" + data.Id + "' class='btn btn-default deleteSim' type='button' data-loading-text=\" < i class= 'fa fa-circle-o-notch fa-spin' onclick = \"deleteSimulation(event, '" + data.Id + "')\"></i > Deleting Simulation\">Delete</button><div id='" + data.Id + "' class='treeContainer' style='object-fit: cover;'><h3> Loading...</h3></div></div>");
-                $("#graphNav").append("<button class='tablinks' onclick = \"openTab(event, '" + data.Id + "')\" >" + data.Name + "</button>")
+                $("#graphNavContent").append("<div class='tabcontent' id='" + data.Id + "TabContent'><p>"+data.Description+"</p><button id='delete+" + data.Id + "' class='btn btn-default deleteSim' type='button' onclick =\"deleteSimulation(event, '" + data.Id + "')\" data-loading-text=\" <i class= 'fa fa-circle-o-notch fa-spin'></i> Deleting Simulation\">Delete</button><div id='" + data.Id + "' class='treeContainer' style='object-fit: cover;'><h3> Loading...</h3></div></div>");
+                $("#graphNav").append("<button class='tablinks' id='" + data.Id + "TabButton' onclick = \"openTab(event, '" + data.Id + "')\" >" + data.Name + "</button>")
             }
 
             fetchGraph(data.Id, data.Id);
@@ -481,7 +506,7 @@
 
                 $.when.apply($, promises).done(function () {
                     refreshModelSelects();
-                    $("#newSimTab").removeAttr("disabled");
+                    $(".metaTab").removeAttr("disabled");
                     buttonRef.button('reset');
                 });
             });
@@ -570,11 +595,11 @@
     <div class="row" style="padding-top:0.5em;">
         <div id="graphDiv" class="col-xs-12 d-none">
             <div id="graphNav" class="tab col-xs-12">
-                <button id="newSimTab" class="tablinks" onclick="openTab(event, 'newSim')" disabled>New Simulation</button>
+                <button id="newSimTab" class="tablinks metaTab" onclick="openTab(event, 'newSim')" disabled>New Simulation</button>
                 <button class="tablinks active" onclick="openTab(event, 'tree')">DigitalTwin</button>
             </div>
             <div id="graphNavContent" class="col-xs-12 clearfix">
-                <div id="newSim" class="tabcontent" style="object-fit: cover;">
+                <div id="newSimTabContent" class="tabcontent" style="object-fit: cover;">
                     <div class="form-group">
                         <label for="simName">Simulation Name:</label>
                         <input type="text" class="form-control" id="simName">
@@ -591,7 +616,7 @@
                     </div>
                     <button id="simulateButton" class="btn btn-default" type="button" data-loading-text="<i class='fa fa-circle-o-notch fa-spin'></i> Creating Simulation">Simulate</button>
                 </div>
-                <div  class="tabcontent" style="object-fit: cover;overflow: auto;display: block;">
+                <div  id="treeTabContent" class="tabcontent" style="object-fit: cover;overflow: auto;display: block;">
                     <div id="tree" class="treeContainer">
                         <h3> Loading...</h3>
                     </div>
