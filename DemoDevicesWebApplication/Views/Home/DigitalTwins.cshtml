@@ -132,6 +132,14 @@
             margin: 0;
             padding: 10px 20px;
         }
+
+        .list-group {
+            max-height: 100px;
+            max-width: 200px;
+            margin-bottom: 10px;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+        }
     </style>
 }
 
@@ -157,8 +165,10 @@
         });
     </script>
     <script>
+        var propertyRefreshInterval = 2000;
         var trees = {};
         var globalModelCache = {};
+        var globalInterfaceCache = {};
         var globalScriptCache = {};
         var simulationUri = "http://localhost:9003/v1/";
         var simulationManagementUri = "https://localhost:44321/api/";
@@ -268,6 +278,7 @@
             this.tree = treeJson;
             this.chart = null;
             this.simulationId = simulationId;
+            this.methodNames = {};
             this.treantNodes = {}
             this.treantNodes["config"] = {
                 container: container,
@@ -276,7 +287,7 @@
                 connectors: {
                     type: 'step'
                 },
-                animateOnInit: true,
+                animateOnInit: false,
                 node: {
                     collapsable: true,
                     HTMLclass: 'nodeExample1'
@@ -294,19 +305,55 @@
         InternalTree.prototype.populateTree = function (buttonRef) {
             var data = [];
             var self = this;
-            this.tree.forEach(function (treeNode) {
+            var interfaces = this.tree.PnPInterfaces;
+            for (var interface in interfaces) {
+                globalInterfaceCache[interface] = interfaces[interface];
+            }
+
+            this.tree.Nodes.forEach(function (treeNode) {
                 self.addNode(treeNode);
                 data.push(self.processItem(treeNode));
             });
+
+            
+
             $.when.apply($, data).done(function () {
                 console.log("Done");
                 console.log(data);
                 self.chart = new Treant(Object.values(self.treantNodes), function () { }, $);
+                self.startPropertyRefresh();
                 if (buttonRef) {
                     buttonRef.button('reset');
                 }
             });
         }
+
+        InternalTree.prototype.startPropertyRefresh = function (self) {
+
+            var query = $("#ApiEndpoint").val() + '/api/Query/' + $("#Tenant").val();
+            if(!self)
+                self = this;
+
+            if (self.simulationId) {
+                query += "?simulationId=" + self.simulationId;
+            }
+            $.ajax({
+                type: "Get",
+                url: query,
+                success: function (data) {
+                    var treeNodes = JSON.parse(data);
+                    treeNodes.forEach(function (treeNode) {
+                        self.refreshProps(treeNode);
+                    });
+                    setTimeout(self.startPropertyRefresh, propertyRefreshInterval, self);
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    handleMessage("Error", "Could not retrieve graph : " + thrownError);
+                    setTimeout(self.startPropertyRefresh, propertyRefreshInterval, self);
+                }
+            });
+
+        } 
 
         InternalTree.prototype.loadDeviceModel = function (modelId, force = false) {
             var dfd = $.Deferred();
@@ -332,13 +379,36 @@
         }
 
         InternalTree.prototype.addMethodsFromDeviceModel = function (data, model) {
-            var html = "<div class='card'><div class='card-header nopadding'><button class='btn btn-link' data-toggle='collapse' data-target='#collapse" + data.Id + "' aria-expanded='true' aria-controls='collapseOne'><i class='fa fa-rocket fa-fw'></i>Methods</button></div ><ul id = 'collapse" + data.Id + "' class='collapse list-group list-group-flush'>";
-            for (item in model.CloudToDeviceMethods) {
-                html += "<li class='list-group-item'><div class='input-group'><div class='input-group-prepend'><span class='input-group-text'>" + item + "</span></div> <input type='textarea' class='form-control' id='" + data.Id + item + "method' placeholder='{}'><div class='input-group-append'><button class='btn btn-outline-secondary' type='button' data-loading-text=\" <i class='fa fa-circle-o-notch fa-spin'></i> Invoking\" onclick = \"invokeMethod(event, '" + data.Name + "', '" + this.simulationId + "', '" + item + "', '#" + data.Id + item + "method')\">Invoke</button></div></div></li>"
+            var methods = new Set();
+            for (var item in model.CloudToDeviceMethods) {
+                if (!this.methodNames[data.Name].has(item)) {
+                    methods.add(item);
+                }
             }
-            html += "</ul></div>";
-            this.treantNodes[data.Name].innerHTML += html
+            this.addMethodsFromMethodSet(data.Id, data.Name, methods, "SimulationMethods", "btn-secondary");
         }
+
+        InternalTree.prototype.addMethodsFromPnPInterface = function (data, model) {
+            for (var item in model.contents) {
+                if (model.contents[item]['@@type'] == "Command") {
+                    this.methodNames[data.Name].add(model.contents[item]['name']);
+                }
+            }
+            this.addMethodsFromMethodSet(data.Id, data.Name, this.methodNames[data.Name], "Methods");
+        }
+
+        InternalTree.prototype.addMethodsFromMethodSet = function (id, name, methods, header, btnClass = "btn-link") {
+            if (!methods.size)
+                return;
+            var self = this;
+            var html = "<div class='card' id='" + id + "Card'><div class='card-header nopadding'><button class='btn " + btnClass+"' data-toggle='collapse' data-target='#collapse" + id + header + "' aria-expanded='true' aria-controls='collapseOne' style ='width:100%;'><i class='fa fa-rocket fa-fw'></i>" + header + "</button></div ><ul id = 'collapse" + id + header +"' class='collapse list-group list-group-flush'>";
+            methods.forEach(function (item) {
+                html += "<li class='list-group-item'><div class='input-group'><div class='input-group-prepend'><span class='input-group-text'>" + item + "</span></div> <input type='textarea' class='form-control' id='" + id + item + "method' placeholder='{}'><div class='input-group-append'><button class='btn btn-outline-secondary' type='button' data-loading-text=\" <i class='fa fa-circle-o-notch fa-spin'></i> Invoking\" onclick = \"invokeMethod(event, '" + name + "', '" + self.simulationId + "', '" + item + "', '#" + id + item + "method')\">Invoke</button></div></div></li>"
+            });
+            html += "</ul></div>";
+            self.treantNodes[name].innerHTML += html
+        }
+
         InternalTree.prototype.processItem = function (treeNode) {
             var dfd = $.Deferred();
             var dfdParent = $.Deferred();
@@ -360,7 +430,24 @@
                 }
 
             }
+
+            if (globalInterfaceCache[treeNode.Type]) {
+                this.addMethodsFromPnPInterface(treeNode, globalInterfaceCache[treeNode.Type]);
+            }
             var self = this;
+
+            $.ajax({
+                type: "Get",
+                url: query,
+                success: function (response) {
+                    var parentNode = JSON.parse(response);
+                    self.addParent(treeNode, parentNode);
+                    dfdParent.resolve()
+                },
+                error: function (xhr, ajaxOptions, thrownError) {
+                    dfdParent.resolve()
+                }
+            });
 
             $.ajax({
                 type: "Get",
@@ -386,20 +473,66 @@
 
             return dfd.promise();
         }
+        InternalTree.prototype.refreshProps = function (data) {
 
+            var container = $("#" + data.Id + "Props");
+            if (!container.length)
+                return;
+            container.children().remove();
+            var properties = data.Properties;
+            if (properties["$reported"]) {
+                for (var key in properties["$reported"]) {
+                    container.append("<li class='list-group-item'>" + key + "\t:\t" + JSON.stringify(properties["$reported"][key]) + "</li>");
+                }
+            }
+            if (properties["$desired"]) {
+                for (var key in properties["$desired"]) {
+                    container.append("<li class='list-group-item list-group-item-secondary'>" + key + "\t:\t" + JSON.stringify(properties["$desired"][key]) + "</li>");
+                }
+            }
+            //var doc = $(this.treantNodes[data.Name].innerHTML)
+            //var props = doc.find("#" + data.Id + "Props");
+            //props.children().remove();
+
+            //var properties = data.Properties;
+            //if (properties["$reported"]) {
+            //    for (var key in properties["$reported"]) {
+            //        props.append("<li class='list-group-item'>" + key + "\t:\t" + JSON.stringify(properties["$reported"][key]) + "</li>");
+            //    }
+            //}
+            //if (properties["$desired"]) {
+            //    for (var key in properties["$desired"]) {
+            //        props.append("<li class='list-group-item list-group-item-secondary'>" + key + "\t:\t" + JSON.stringify(properties["$desired"][key]) + "</li>");
+            //    }
+            //}
+
+            //var inner = "";
+            //doc.each(function (i, d) { inner += d.outerHTML;})
+
+            //this.treantNodes[data.Name].innerHTML = inner;
+            //this.chart.tree.reload();
+        }
         InternalTree.prototype.addNode = function (data) {
             console.log(JSON.stringify(data));
             var glyph = "";
             if (data.Classification === "device") {
                 glyph = "<i class='fa fa-microchip fa-fw'></i>"
             }
-            var internal = "<div class='card'><div class='card-header'>" + glyph + data.Name + "</div ><ul class='list-group list-group-flush'>";
+            var internal = "<div class='card'><div class='card-header'>" + glyph + data.Name + "</div ><ul id='"+data.Id+"Props' class='list-group list-group-flush'>";
             var properties = data.Properties;
             console.log(JSON.stringify(properties));
-            for (var key in properties) {
-                internal += "<li class='list-group-item'>" + key + "\t:\t" + JSON.stringify(properties[key]) + "</li>";
+            if (properties["$reported"]) {
+                for (var key in properties["$reported"]) {
+                    internal += "<li class='list-group-item'>" + key + "\t:\t" + JSON.stringify(properties["$reported"][key]) + "</li>";
+                }
+            }
+            if (properties["$desired"]) {
+                for (var key in properties["$desired"]) {
+                    internal += "<li class='list-group-item list-group-item-secondary'>" + key + "\t:\t" + JSON.stringify(properties["$desired"][key]) + "</li>";
+                }
             }
             internal += "</ul></div>";
+            this.methodNames[data.Name] = new Set()
             this.treantNodes[data.Name] =
                 {
                     innerHTML: internal,
@@ -447,9 +580,9 @@
 
         function fetchGraph(containerId, simulationId) {
             var dfd = $.Deferred();
-            var query = $("#ApiEndpoint").val() + '/api/Query/' + $("#Tenant").val()
+            var query = $("#ApiEndpoint").val() + '/api/Query/' + $("#Tenant").val() + "?includeInterface=true";
             if (simulationId) {
-                query += "?simulationId=" + simulationId;
+                query += "&simulationId=" + simulationId;
             }
             $.ajax({
                 type: "Get",
