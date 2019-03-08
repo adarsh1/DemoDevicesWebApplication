@@ -473,44 +473,77 @@
 
             return dfd.promise();
         }
+
+        InternalTree.prototype.getPropsHtml = function (data) {
+
+            html = "";
+            var model = globalInterfaceCache[data.Type];
+
+            var desiredProps = new Set();
+            var reportedProps = new Set();
+
+            for (var item in model.contents) {
+                if (model.contents[item]['@@type'] == "Property") {
+                    if (model.contents[item]['writable'] === true) {
+                        desiredProps.add(model.contents[item]['name']);
+                    }
+                    else {
+                        reportedProps.add(model.contents[item]['name']);
+                    }
+                }
+            }
+
+            var properties = data.Properties;
+
+            reportedProps.forEach(function (key) {
+                var val = "";
+                if (properties["$reported"] &&(key in properties["$reported"])) {
+                    val = JSON.stringify(properties["$reported"][key]);
+                }
+
+                html += "<li class='list-group-item'>" + key + "\t:\t" + val + "</li>";
+            });
+
+            desiredProps.forEach(function (key) {
+                var val = "";
+                if (properties["$desired"]&&(key in properties["$desired"])) {
+                    val = JSON.stringify(properties["$desired"][key]);
+                }
+
+                html += "<li class='list-group-item list-group-item-secondary'>" + key + "\t:\t" + val + "</li>";
+            });
+
+            //if (properties["$reported"]) {
+            //    for (var key in properties["$reported"]) {
+            //        html += "<li class='list-group-item'>" + key + "\t:\t" + JSON.stringify(properties["$reported"][key]) + "</li>";
+            //    }
+            //}
+            //if (properties["$desired"]) {
+            //    for (var key in properties["$desired"]) {
+            //        html += "<li class='list-group-item list-group-item-secondary'>" + key + "\t:\t" + JSON.stringify(properties["$desired"][key]) + "</li>";
+            //    }
+            //}
+
+            return html;
+        }
         InternalTree.prototype.refreshProps = function (data) {
 
             var container = $("#" + data.Id + "Props");
             if (!container.length)
                 return;
             container.children().remove();
-            var properties = data.Properties;
-            if (properties["$reported"]) {
-                for (var key in properties["$reported"]) {
-                    container.append("<li class='list-group-item'>" + key + "\t:\t" + JSON.stringify(properties["$reported"][key]) + "</li>");
-                }
-            }
-            if (properties["$desired"]) {
-                for (var key in properties["$desired"]) {
-                    container.append("<li class='list-group-item list-group-item-secondary'>" + key + "\t:\t" + JSON.stringify(properties["$desired"][key]) + "</li>");
-                }
-            }
-            //var doc = $(this.treantNodes[data.Name].innerHTML)
-            //var props = doc.find("#" + data.Id + "Props");
-            //props.children().remove();
+            var html = this.getPropsHtml(data);
+            container.append(html);
 
-            //var properties = data.Properties;
-            //if (properties["$reported"]) {
-            //    for (var key in properties["$reported"]) {
-            //        props.append("<li class='list-group-item'>" + key + "\t:\t" + JSON.stringify(properties["$reported"][key]) + "</li>");
-            //    }
-            //}
-            //if (properties["$desired"]) {
-            //    for (var key in properties["$desired"]) {
-            //        props.append("<li class='list-group-item list-group-item-secondary'>" + key + "\t:\t" + JSON.stringify(properties["$desired"][key]) + "</li>");
-            //    }
-            //}
+            var doc = $(this.treantNodes[data.Name].innerHTML)
+            var props = doc.find("#" + data.Id + "Props");
+            props.children().remove();
+            props.append(html);
 
-            //var inner = "";
-            //doc.each(function (i, d) { inner += d.outerHTML;})
+            var inner = "";
+            doc.each(function (i, d) { inner += d.outerHTML;})
 
-            //this.treantNodes[data.Name].innerHTML = inner;
-            //this.chart.tree.reload();
+            this.treantNodes[data.Name].innerHTML = inner;
         }
         InternalTree.prototype.addNode = function (data) {
             console.log(JSON.stringify(data));
@@ -519,18 +552,7 @@
                 glyph = "<i class='fa fa-microchip fa-fw'></i>"
             }
             var internal = "<div class='card'><div class='card-header'>" + glyph + data.Name + "</div ><ul id='"+data.Id+"Props' class='list-group list-group-flush'>";
-            var properties = data.Properties;
-            console.log(JSON.stringify(properties));
-            if (properties["$reported"]) {
-                for (var key in properties["$reported"]) {
-                    internal += "<li class='list-group-item'>" + key + "\t:\t" + JSON.stringify(properties["$reported"][key]) + "</li>";
-                }
-            }
-            if (properties["$desired"]) {
-                for (var key in properties["$desired"]) {
-                    internal += "<li class='list-group-item list-group-item-secondary'>" + key + "\t:\t" + JSON.stringify(properties["$desired"][key]) + "</li>";
-                }
-            }
+            internal += this.getPropsHtml(data);
             internal += "</ul></div>";
             this.methodNames[data.Name] = new Set()
             this.treantNodes[data.Name] =
